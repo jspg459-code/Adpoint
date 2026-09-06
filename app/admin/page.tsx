@@ -110,7 +110,7 @@ export default function AdminPage() {
 
     const banUntil = data?.ban_until;
     setUsers(list => list.map(u => u.id === profile.id ? { ...u, is_suspended: true, ban_until: banUntil } : u));
-    setMessage("Utilisateur banni. Sa session a été déconnectée.");
+    setMessage("Utilisateur banni avec succès.");
   }
 
   async function customBan(profile: Profile) {
