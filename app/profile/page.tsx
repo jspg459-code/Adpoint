@@ -14,7 +14,8 @@ export default function ProfilePage() {
   const [points, setPoints] = useState(0);
   const [changedAt, setChangedAt] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{type:"success"|"error";text:string}|null>(null);\n  const usernameInputRef = useRef<HTMLInputElement>(null);
+  const [message, setMessage] = useState<{type:"success"|"error";text:string}|null>(null);
+  const usernameInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { load(); }, []);
 
