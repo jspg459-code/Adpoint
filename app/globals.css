@@ -334,3 +334,52 @@
   .dash > header .userNav a,
   .dash > header .userNav .linkButton{font-size:14px!important}
 }
+
+
+/* FORCE: identical centered header on Dashboard and Profile */
+.dash > header.cleanTopHeader{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  text-align:center!important;
+  height:auto!important;
+  min-height:132px!important;
+  padding:24px 16px 20px!important;
+  gap:22px!important;
+}
+.dash > header.cleanTopHeader .textBrand{
+  display:block!important;
+  margin:0 auto!important;
+  text-align:center!important;
+  width:max-content!important;
+}
+.dash > header.cleanTopHeader .cleanTextNav{
+  width:100%!important;
+  margin:0 auto!important;
+  padding:0!important;
+  display:flex!important;
+  flex-direction:row!important;
+  flex-wrap:nowrap!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:28px!important;
+}
+.dash > header.cleanTopHeader .cleanTextNav a,
+.dash > header.cleanTopHeader .cleanTextNav button{
+  margin:0!important;
+  padding:8px 0!important;
+  flex:0 0 auto!important;
+  white-space:nowrap!important;
+  text-align:center!important;
+}
+@media(max-width:480px){
+  .dash > header.cleanTopHeader{
+    min-height:124px!important;
+    padding:22px 12px 18px!important;
+    gap:18px!important;
+  }
+  .dash > header.cleanTopHeader .cleanTextNav{gap:20px!important;}
+  .dash > header.cleanTopHeader .cleanTextNav a,
+  .dash > header.cleanTopHeader .cleanTextNav button{font-size:13px!important;}
+}
