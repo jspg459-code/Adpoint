@@ -221,3 +221,32 @@
 .usernameInput input{width:100%!important;display:block!important;pointer-events:auto!important;cursor:text!important;-webkit-user-select:text!important;user-select:text!important}
 .usernameInput.locked{cursor:not-allowed!important}
 .usernameInput.locked input{cursor:not-allowed!important}
+
+
+/* Dashboard mobile navigation: give each action more breathing room */
+@media(max-width:760px){
+  .dash header .userNav{
+    width:100%;
+    display:grid!important;
+    grid-template-columns:1fr auto 1fr;
+    align-items:center;
+    gap:26px!important;
+    padding:4px 10px 0;
+  }
+  .dash header .userNav > a:first-child{
+    justify-self:start;
+    white-space:nowrap;
+  }
+  .dash header .profileLink{
+    justify-self:center;
+    white-space:nowrap;
+  }
+  .dash header .linkButton{
+    justify-self:end;
+    white-space:nowrap;
+  }
+}
+@media(max-width:420px){
+  .dash header .userNav{gap:16px!important;padding-left:2px;padding-right:2px}
+  .dash header .userNav a,.dash header .linkButton{font-size:12px!important}
+}
