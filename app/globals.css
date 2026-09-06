@@ -284,3 +284,53 @@
     justify-self:auto!important;
   }
 }
+
+
+/* Dashboard header: genuinely centered layout on phones */
+@media(max-width:760px){
+  .dash > header{
+    height:auto!important;
+    min-height:0!important;
+    padding:26px 18px 22px!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:22px!important;
+    text-align:center!important;
+  }
+
+  .dash > header .brand{
+    margin:0!important;
+    width:auto!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+  }
+
+  .dash > header .userNav{
+    width:auto!important;
+    margin:0!important;
+    padding:0!important;
+    display:flex!important;
+    flex-wrap:nowrap!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:22px!important;
+  }
+
+  .dash > header .userNav > a,
+  .dash > header .userNav .profileLink,
+  .dash > header .userNav .linkButton{
+    margin:0!important;
+    padding:0!important;
+    text-align:center!important;
+  }
+}
+
+@media(max-width:480px){
+  .dash > header{padding-left:12px!important;padding-right:12px!important;gap:20px!important}
+  .dash > header .userNav{gap:16px!important}
+  .dash > header .userNav a,
+  .dash > header .userNav .linkButton{font-size:14px!important}
+}
