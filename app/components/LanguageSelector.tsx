@@ -19,6 +19,9 @@ type Translation = Partial<Record<Lang, string>>;
 const P = (en:string, es:string, de:string, it:string, pt:string, nl:string, ar:string):Translation =>
   ({ en, es, de, it, pt, nl, ar });
 
+// Persist the original French text for every DOM node while the language changes.
+const originalTexts = new WeakMap<Text, string>();
+
 const phrases: Record<string, Translation> = {
   "Connexion": P("Login","Iniciar sesión","Anmelden","Accedi","Entrar","Inloggen","تسجيل الدخول"),
   "Se connecter": P("Sign in","Iniciar sesión","Anmelden","Accedi","Entrar","Inloggen","تسجيل الدخول"),
@@ -150,7 +153,6 @@ export default function LanguageSelector() {
     document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
     localStorage.setItem("adpoints-language", lang);
 
-    const originals = new WeakMap<Text, string>();
     const translating = new WeakSet<Text>();
 
     const translateNode = (node:Text) => {
@@ -158,8 +160,8 @@ export default function LanguageSelector() {
       if (!parent || parent.closest("[data-no-translate]")) return;
       if (translating.has(node)) return;
 
-      const raw = originals.get(node) ?? node.textContent ?? "";
-      if (!originals.has(node)) originals.set(node, raw);
+      const raw = originalTexts.get(node) ?? node.textContent ?? "";
+      if (!originalTexts.has(node)) originalTexts.set(node, raw);
 
       const lead = raw.match(/^\s*/)?.[0] ?? "";
       const tail = raw.match(/\s*$/)?.[0] ?? "";
