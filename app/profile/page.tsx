@@ -15,6 +15,7 @@ export default function ProfilePage() {
   const [changedAt, setChangedAt] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{type:"success"|"error";text:string}|null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const usernameInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { load(); }, []);
@@ -26,7 +27,7 @@ export default function ProfilePage() {
     setEmail(user.email || "");
     const { data, error } = await supabase
       .from("profiles")
-      .select("username,points_balance,username_changed_at")
+      .select("username,points_balance,username_changed_at,role")
       .eq("id", user.id)
       .single();
 
@@ -36,6 +37,7 @@ export default function ProfilePage() {
       setSavedUsername(name);
       setPoints(data.points_balance ?? 0);
       setChangedAt(data.username_changed_at ?? null);
+      setIsAdmin(user.email?.toLowerCase() === "jspg459@gmail.com" && data.role === "admin");
     }
   }
 
@@ -104,6 +106,7 @@ export default function ProfilePage() {
         <nav className="cleanTextNav">
           <Link href="/dashboard">Tableau de bord</Link>
           <Link href="/profile" className="active">Mon profil</Link>
+          {isAdmin && <Link href="/admin">Administration</Link>}
           <button onClick={logout}>Déconnexion</button>
         </nav>
       </header>
