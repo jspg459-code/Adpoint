@@ -250,3 +250,37 @@
   .dash header .userNav{gap:16px!important;padding-left:2px;padding-right:2px}
   .dash header .userNav a,.dash header .linkButton{font-size:12px!important}
 }
+
+
+/* Center the complete dashboard header/navigation */
+@media(max-width:760px){
+  .dash header{
+    text-align:center!important;
+  }
+  .dash header > *{
+    margin-left:auto!important;
+    margin-right:auto!important;
+  }
+  .dash header .brand,
+  .dash header .logo,
+  .dash header .siteBrand{
+    justify-content:center!important;
+    text-align:center!important;
+  }
+  .dash header .userNav{
+    width:100%!important;
+    display:flex!important;
+    justify-content:center!important;
+    align-items:center!important;
+    gap:24px!important;
+    padding:0!important;
+    margin-top:22px!important;
+  }
+  .dash header .userNav > a,
+  .dash header .userNav .profileLink,
+  .dash header .userNav .linkButton{
+    flex:0 0 auto!important;
+    text-align:center!important;
+    justify-self:auto!important;
+  }
+}
