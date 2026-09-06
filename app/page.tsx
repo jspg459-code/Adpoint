@@ -1,6 +1,19 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect } from "react";
 
 export default function Home() {
+  useEffect(()=>{
+    const hash=window.location.hash;
+    const search=window.location.search;
+    const isRecovery=hash.includes("type=recovery") || search.includes("type=recovery") || search.includes("code=");
+
+    if(isRecovery){
+      window.location.replace("/reset-password"+search+hash);
+    }
+  },[]);
+
   return (
     <main className="homeModern">
       <header className="modernHeader">
