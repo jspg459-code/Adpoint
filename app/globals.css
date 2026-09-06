@@ -383,3 +383,40 @@
   .dash > header.cleanTopHeader .cleanTextNav a,
   .dash > header.cleanTopHeader .cleanTextNav button{font-size:13px!important;}
 }
+
+
+/* ADMIN PANEL */
+.adminPage{padding-bottom:60px}
+.adminIntro{margin:56px auto 28px;max-width:1120px}
+.adminIntro h1{font-size:48px;margin:14px 0 10px}
+.adminIntro h1 b{color:#58d39b}
+.adminIntro p{color:#aebaca;font-size:18px;margin:0}
+.adminStats{max-width:1120px;margin:0 auto 28px;display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.adminStats article,.adminSection{background:#111f2d;border:1px solid #30475b;border-radius:22px}
+.adminStats article{padding:24px}
+.adminStats small{display:block;color:#aebaca;margin-bottom:10px}
+.adminStats strong{font-size:30px;color:#58d39b}
+.adminSection{max-width:1120px;margin:22px auto;padding:24px}
+.adminSectionHead{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:18px}
+.adminSectionHead h2{margin:0 0 6px;font-size:26px}
+.adminSectionHead p{margin:0;color:#aebaca}
+.adminRefresh,.adminUser button{border:0;border-radius:12px;padding:11px 16px;font-weight:700;cursor:pointer;background:#58d39b;color:#10202d}
+.adminList{display:flex;flex-direction:column;gap:12px}
+.adminUser{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:18px;border:1px solid #2c4356;border-radius:16px;background:#0d1a26}
+.adminUser>div:first-child{min-width:0}
+.adminUser strong{display:block;font-size:17px;margin-bottom:5px}
+.adminUser span{display:block;color:#aebaca;word-break:break-word}
+.adminUserMeta{display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:flex-end}
+.adminUserMeta b{white-space:nowrap}
+.status{padding:6px 10px;border-radius:999px;font-size:13px!important;font-weight:700}
+.activeStatus{background:rgba(88,211,155,.14);color:#72e1ad!important}
+.suspended{background:rgba(220,160,80,.15);color:#e4bd78!important}
+@media(max-width:760px){
+  .adminIntro{margin:34px 20px 24px}
+  .adminIntro h1{font-size:36px}
+  .adminStats{margin:0 20px;grid-template-columns:repeat(2,1fr)}
+  .adminSection{margin:20px;padding:18px}
+  .adminUser{align-items:flex-start;flex-direction:column}
+  .adminUserMeta{justify-content:flex-start}
+  .adminSectionHead{align-items:flex-start;flex-direction:column}
+}
