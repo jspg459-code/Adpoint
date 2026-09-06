@@ -5,6 +5,15 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
 
+function frenchError(error:string){
+  const e=error.toLowerCase();
+  if(e.includes("invalid login credentials")) return "Adresse e-mail ou mot de passe incorrect.";
+  if(e.includes("email not confirmed")) return "Ton adresse e-mail n’est pas encore confirmée.";
+  if(e.includes("too many requests") || e.includes("rate limit")) return "Trop de tentatives. Réessaie dans quelques instants.";
+  if(e.includes("network")) return "Erreur de connexion au réseau. Réessaie.";
+  return "Une erreur est survenue. Vérifie tes informations et réessaie.";
+}
+
 export default function LoginPage(){
   const router=useRouter();
   const [email,setEmail]=useState("");
@@ -27,11 +36,7 @@ export default function LoginPage(){
     setLoading(false);
 
     if(error){
-      if(error.message.toLowerCase().includes("invalid login credentials")){
-        setMessage("Adresse e-mail ou mot de passe incorrect.");
-      }else{
-        setMessage(error.message);
-      }
+      setMessage(frenchError(error.message));
       return;
     }
 
@@ -45,8 +50,9 @@ export default function LoginPage(){
 
   async function forgotPassword(){
     const cleanEmail=email.trim().toLowerCase();
+
     if(!cleanEmail){
-      setMessage("Entre ton adresse e-mail puis appuie sur « Mot de passe oublié ? »");
+      setMessage("Entre d’abord ton adresse e-mail pour recevoir le lien de réinitialisation.");
       return;
     }
 
@@ -60,15 +66,16 @@ export default function LoginPage(){
     setSendingReset(false);
 
     if(error){
-      setMessage(error.message);
+      setMessage(frenchError(error.message));
       return;
     }
 
-    setMessage("Un e-mail de réinitialisation vient d’être envoyé si cette adresse possède un compte.");
+    setMessage("Un e-mail de réinitialisation vient d’être envoyé. Vérifie ta boîte de réception.");
   }
 
   return <main className="authPage">
     <Link className="back" href="/">← Retour à AdPoints</Link>
+
     <section className="authCard">
       <div className="coinBig">◉</div>
       <h1>Connexion</h1>
@@ -83,6 +90,7 @@ export default function LoginPage(){
           autoComplete="email"
           required
         />
+
         <input
           type="password"
           placeholder="Mot de passe"
@@ -91,16 +99,26 @@ export default function LoginPage(){
           autoComplete="current-password"
           required
         />
-        <button disabled={loading}>{loading?"Connexion...":"Se connecter"}</button>
-      </form>
 
-      <button type="button" className="forgotPassword" onClick={forgotPassword} disabled={sendingReset}>
-        {sendingReset ? "Envoi en cours..." : "Mot de passe oublié ?"}
-      </button>
+        <button
+          type="button"
+          className="forgotPassword"
+          onClick={forgotPassword}
+          disabled={sendingReset}
+        >
+          {sendingReset ? "Envoi du lien..." : "Mot de passe oublié ?"}
+        </button>
+
+        <button type="submit" disabled={loading}>
+          {loading ? "Connexion..." : "Se connecter"}
+        </button>
+      </form>
 
       {message&&<div className={message.startsWith("Un e-mail")?"notice":"error"}>{message}</div>}
 
-      <div className="switch">Pas encore de compte ? <Link href="/signup">Créer mon compte</Link></div>
+      <div className="switch">
+        Pas encore de compte ? <Link href="/signup">Créer un compte</Link>
+      </div>
     </section>
   </main>;
 }
