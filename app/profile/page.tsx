@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
 
@@ -14,7 +14,7 @@ export default function ProfilePage() {
   const [points, setPoints] = useState(0);
   const [changedAt, setChangedAt] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{type:"success"|"error";text:string}|null>(null);
+  const [message, setMessage] = useState<{type:"success"|"error";text:string}|null>(null);\n  const usernameInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { load(); }, []);
 
@@ -120,13 +120,31 @@ export default function ProfilePage() {
 
           <div className="fieldBlock">
             <label>Pseudo</label>
-            <div className={"usernameInput " + (valid ? "valid" : "")}>
+            <div
+              className={"usernameInput " + (valid ? "valid" : "") + (locked ? " locked" : "")}
+              onClick={() => {
+                if (locked) {
+                  setMessage({type:"error",text:`Ton pseudo est bloqué jusqu’à la prochaine modification autorisée dans ${remainingDays} jour(s).`});
+                  return;
+                }
+                usernameInputRef.current?.focus();
+              }}
+            >
               <input
+                ref={usernameInputRef}
+                type="text"
+                inputMode="text"
+                autoComplete="nickname"
                 value={username}
-                disabled={locked}
+                readOnly={locked}
+                aria-readonly={locked}
                 onChange={e => {
+                  if (locked) return;
                   setUsername(e.target.value.replace(/[^a-zA-Z0-9_-]/g,""));
                   setMessage(null);
+                }}
+                onFocus={() => {
+                  if (locked) setMessage({type:"error",text:`Tu pourras modifier ton pseudo dans ${remainingDays} jour(s).`});
                 }}
                 placeholder="Ton pseudo"
                 maxLength={24}
