@@ -19,10 +19,19 @@ export default function Dashboard(){
  async function load(){
   const {data:{user}}=await supabase.auth.getUser();
   if(!user){router.replace("/login");return;}
+
   const [{data:p},{data:a}]=await Promise.all([
-   supabase.from("profiles").select("username,email,points_balance,role").eq("id",user.id).single(),
+   supabase.from("profiles").select("username,email,points_balance,role,ban_until,is_suspended").eq("id",user.id).single(),
    supabase.from("activities").select("*").eq("is_active",true).order("created_at")
   ]);
+
+  const activeBan=p?.ban_until && new Date(p.ban_until).getTime()>Date.now();
+  if(activeBan || (p?.is_suspended && !p?.ban_until)){
+   await supabase.auth.signOut();
+   router.replace("/login");
+   return;
+  }
+
   setProfile(p); setUsername(p?.username||""); setActivities(a||[]);
   setIsAdmin(user.email?.toLowerCase()==="jspg459@gmail.com" && p?.role==="admin");
  }
