@@ -4,12 +4,15 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
 
+const WEEK = 7 * 24 * 60 * 60 * 1000;
+
 export default function ProfilePage() {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [savedUsername, setSavedUsername] = useState("");
   const [email, setEmail] = useState("");
   const [points, setPoints] = useState(0);
+  const [changedAt, setChangedAt] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{type:"success"|"error";text:string}|null>(null);
 
@@ -18,69 +21,157 @@ export default function ProfilePage() {
   async function load() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { router.replace("/login"); return; }
+
     setEmail(user.email || "");
-    const { data, error } = await supabase.from("profiles").select("username,points_balance").eq("id", user.id).single();
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("username,points_balance,username_changed_at")
+      .eq("id", user.id)
+      .single();
+
     if (!error && data) {
       const name = data.username || "";
-      setUsername(name); setSavedUsername(name); setPoints(data.points_balance ?? 0);
+      setUsername(name);
+      setSavedUsername(name);
+      setPoints(data.points_balance ?? 0);
+      setChangedAt(data.username_changed_at ?? null);
     }
   }
 
   const cleanUsername = username.trim();
   const changed = cleanUsername !== savedUsername;
   const valid = cleanUsername.length >= 3 && cleanUsername.length <= 24;
+  const nextChange = changedAt ? new Date(new Date(changedAt).getTime() + WEEK) : null;
+  const locked = !!nextChange && nextChange.getTime() > Date.now();
+  const remainingDays = locked && nextChange ? Math.ceil((nextChange.getTime() - Date.now()) / 86400000) : 0;
 
   async function save() {
-    if (!valid) { setMessage({type:"error",text:"Le pseudo doit contenir entre 3 et 24 caractères."}); return; }
-    if (!changed) { setMessage({type:"success",text:"Aucune modification à enregistrer."}); return; }
-    setSaving(true); setMessage(null);
+    if (!valid) {
+      setMessage({type:"error",text:"Le pseudo doit contenir entre 3 et 24 caractères."});
+      return;
+    }
+    if (!changed) {
+      setMessage({type:"success",text:"Aucune modification à enregistrer."});
+      return;
+    }
+    if (locked) {
+      setMessage({type:"error",text:`Tu pourras modifier ton pseudo dans ${remainingDays} jour(s).`});
+      return;
+    }
+
+    setSaving(true);
+    setMessage(null);
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.replace("/login"); return; }
-      const { error } = await supabase.from("profiles").update({username:cleanUsername}).eq("id",user.id);
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .update({ username: cleanUsername })
+        .eq("id", user.id)
+        .select("username,username_changed_at")
+        .single();
+
       if (error) throw error;
-      setUsername(cleanUsername); setSavedUsername(cleanUsername);
-      setMessage({type:"success",text:"Pseudo enregistré avec succès !"});
+
+      setUsername(data.username || cleanUsername);
+      setSavedUsername(data.username || cleanUsername);
+      setChangedAt(data.username_changed_at || new Date().toISOString());
+      setMessage({type:"success",text:"Pseudo enregistré ! Tu pourras le modifier à nouveau dans 7 jours."});
     } catch (error:any) {
       setMessage({type:"error",text:error?.message || "Impossible d’enregistrer le pseudo. Réessaie."});
-    } finally { setSaving(false); }
+    } finally {
+      setSaving(false);
+    }
   }
 
-  async function logout(){ await supabase.auth.signOut(); router.replace("/"); }
-  const initial = useMemo(() => (savedUsername || email || "A").charAt(0).toUpperCase(), [savedUsername,email]);
+  async function logout() {
+    await supabase.auth.signOut();
+    router.replace("/");
+  }
 
-  return <main className="dash profileModern">
-    <header className="modernHeader">
-      <Link href="/dashboard" className="modernBrand"><span className="modernCoin"><i/></span><span><b>Ad</b><strong>Points</strong><small>Regarde. Gagne. Profite.</small></span></Link>
-      <nav className="modernNav">
-        <Link href="/dashboard" className="navPill"><span className="navIcon">⌂</span><span>Tableau de bord</span></Link>
-        <Link href="/profile" className="navPill active"><span className="navIcon">♙</span><span>Mon profil</span></Link>
-        <button className="bellButton" aria-label="Notifications">♟<i/></button>
-        <button className="avatarButton" onClick={logout} title="Se déconnecter">{initial}</button>
-      </nav>
-    </header>
+  const initial = useMemo(
+    () => (savedUsername || email || "A").charAt(0).toUpperCase(),
+    [savedUsername, email]
+  );
 
-    <section className="profileModernPage"><div className="profileModernCard">
-      <div className="profileHero">
-        <div><span className="eyebrow modernEyebrow">♟ &nbsp; MON COMPTE</span><h1>Mon <b>profil</b></h1><p>Modifie ton pseudo à tout moment.<br/>C’est lui qui sera affiché sur AdPoints.</p></div>
-        <div className="bigAvatar">{initial}<button aria-label="Modifier le profil">✎</button></div>
-      </div>
+  return (
+    <main className="dash profileModern">
+      <header className="modernHeader cleanTopHeader">
+        <Link href="/dashboard" className="textBrand">Ad<span>Points</span></Link>
+        <nav className="cleanTextNav">
+          <Link href="/dashboard">Tableau de bord</Link>
+          <Link href="/profile" className="active">Mon profil</Link>
+          <button onClick={logout}>Déconnexion</button>
+        </nav>
+      </header>
 
-      <div className="fieldBlock"><label>Pseudo</label>
-        <div className={"usernameInput "+(valid?"valid":"")}><input value={username} onChange={e=>{setUsername(e.target.value.replace(/[^a-zA-Z0-9_-]/g,""));setMessage(null);}} placeholder="Ton pseudo" maxLength={24}/>{valid&&<span>✓</span>}</div>
-        {valid&&<div className="available">✓ <b>Pseudo disponible !</b></div>}
-      </div>
+      <section className="profileModernPage">
+        <div className="profileModernCard">
+          <div className="profileHero">
+            <div>
+              <span className="eyebrow modernEyebrow">MON COMPTE</span>
+              <h1>Mon <b>profil</b></h1>
+              <p>Ton pseudo est celui qui sera affiché sur AdPoints.</p>
+            </div>
+            <div className="bigAvatar">{initial}</div>
+          </div>
 
-      <button className="saveModern" onClick={save} disabled={saving||!valid}><span>▣</span>{saving?"Enregistrement...":"Enregistrer les modifications"}<b>→</b></button>
-      {message&&<div className={"profileMessage "+message.type}>{message.type==="success"?"✓":"!"} {message.text}</div>}
-      <div className="profileDivider"/>
+          <div className="fieldBlock">
+            <label>Pseudo</label>
+            <div className={"usernameInput " + (valid ? "valid" : "")}>
+              <input
+                value={username}
+                disabled={locked}
+                onChange={e => {
+                  setUsername(e.target.value.replace(/[^a-zA-Z0-9_-]/g,""));
+                  setMessage(null);
+                }}
+                placeholder="Ton pseudo"
+                maxLength={24}
+              />
+            </div>
 
-      <div className="infoRows">
-        <div className="infoModern"><span className="infoIcon">✉</span><div><small>Adresse e-mail</small><strong>{email}</strong></div><em>▣ &nbsp; Non modifiable</em></div>
-        <div className="infoModern"><span className="infoIcon greenIcon">▤</span><div><small>Solde actuel</small><strong>{points} AdPoints</strong></div><Link href="/dashboard">▥ &nbsp; Voir l’historique　›</Link></div>
-      </div>
+            {locked ? (
+              <div className="weeklyLock">
+                Modifiable dans <b>{remainingDays} jour(s)</b>
+                {nextChange && <small>Prochaine modification : {nextChange.toLocaleDateString("fr-FR")}</small>}
+              </div>
+            ) : valid ? (
+              <div className="available">✓ <b>Pseudo disponible</b></div>
+            ) : null}
+          </div>
 
-      <div className="privacyNote"><span>ⓘ</span><p>Ton pseudo est visible par les autres utilisateurs.<br/>Ton e-mail reste privé et n’est jamais affiché publiquement.</p></div>
-    </div></section>
-  </main>;
+          <button className="saveModern" onClick={save} disabled={saving || !valid || locked}>
+            {saving ? "Enregistrement..." : "Enregistrer les modifications"}
+          </button>
+
+          {message && <div className={"profileMessage " + message.type}>{message.text}</div>}
+
+          <div className="profileDivider"/>
+
+          <div className="infoRows">
+            <div className="infoModern">
+              <div>
+                <small>Adresse e-mail</small>
+                <strong>{email}</strong>
+              </div>
+            </div>
+            <div className="infoModern">
+              <div>
+                <small>Solde actuel</small>
+                <strong>{points} AdPoints</strong>
+              </div>
+              <Link href="/dashboard">Voir le tableau de bord</Link>
+            </div>
+          </div>
+
+          <div className="privacyNote">
+            <p>Ton pseudo est visible sur AdPoints. Ton e-mail reste privé.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  );
 }
