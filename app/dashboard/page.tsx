@@ -43,13 +43,13 @@ export default function Dashboard(){
  const needsUsername=!profile?.username?.trim();
 
  return <main className="dash">
-  <header>
-   <Link href="/dashboard" className="brand"><span className="coin">◉</span>AdPoints</Link>
-   <div className="userNav">
-    <Link href="/dashboard">Tableau de bord</Link>
-    <Link href="/profile" className="profileLink">{profile?.username||"Mon profil"} <span className="avatar">◉</span></Link>
-    <button className="linkButton" onClick={logout}>Déconnexion</button>
-   </div>
+  <header className="modernHeader cleanTopHeader">
+   <Link href="/dashboard" className="textBrand">Ad<span>Points</span></Link>
+   <nav className="cleanTextNav">
+    <Link href="/dashboard" className="active">Tableau de bord</Link>
+    <Link href="/profile">Mon profil</Link>
+    <button onClick={logout}>Déconnexion</button>
+   </nav>
   </header>
 
   <section className="dashHero">
