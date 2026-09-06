@@ -11,8 +11,22 @@ type Profile = {
   username: string | null;
   points_balance: number;
   is_suspended: boolean;
+  ban_until: string | null;
+  ban_reason: string | null;
   created_at: string;
 };
+
+function remainingTime(date: string) {
+  const ms = new Date(date).getTime() - Date.now();
+  if (ms <= 0) return "Expiré";
+  const totalMinutes = Math.ceil(ms / 60000);
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+  if (days > 0) return `${days}j ${hours}h`;
+  if (hours > 0) return `${hours}h ${minutes}min`;
+  return `${minutes}min`;
+}
 
 export default function AdminPage() {
   const router = useRouter();
@@ -20,6 +34,7 @@ export default function AdminPage() {
   const [users, setUsers] = useState<Profile[]>([]);
   const [activities, setActivities] = useState<any[]>([]);
   const [message, setMessage] = useState("");
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   useEffect(() => { load(); }, []);
 
@@ -45,7 +60,7 @@ export default function AdminPage() {
 
     const [{ data: profiles, error: profilesError }, { data: acts, error: activitiesError }] =
       await Promise.all([
-        supabase.from("profiles").select("id,email,username,points_balance,is_suspended,created_at").order("created_at", { ascending: false }),
+        supabase.from("profiles").select("id,email,username,points_balance,is_suspended,ban_until,ban_reason,created_at").order("created_at", { ascending: false }),
         supabase.from("activities").select("*").order("created_at", { ascending: false })
       ]);
 
@@ -58,20 +73,55 @@ export default function AdminPage() {
     setLoading(false);
   }
 
-  async function toggleSuspension(profile: Profile) {
-    const { error } = await supabase
-      .from("profiles")
-      .update({ is_suspended: !profile.is_suspended })
-      .eq("id", profile.id);
+  async function manageUser(profile: Profile, action: "ban" | "unban" | "delete", durationSeconds?: number) {
+    if (action === "delete" && !window.confirm(`Supprimer définitivement ${profile.email} ? Cette action supprimera aussi son compte Supabase et ses données associées.`)) return;
+    if (action === "ban" && !durationSeconds) return;
 
-    if (error) {
-      setMessage(error.message);
+    setBusyId(profile.id);
+    setMessage("");
+
+    const { data, error } = await supabase.functions.invoke("admin-user-management", {
+      body: {
+        action,
+        userId: profile.id,
+        durationSeconds,
+        reason: action === "ban" ? "Bannissement décidé par l’administrateur." : undefined
+      }
+    });
+
+    setBusyId(null);
+
+    if (error || data?.error) {
+      setMessage(data?.error || error?.message || "Une erreur est survenue.");
       return;
     }
 
-    setUsers(list => list.map(u =>
-      u.id === profile.id ? { ...u, is_suspended: !u.is_suspended } : u
-    ));
+    if (action === "delete") {
+      setUsers(list => list.filter(u => u.id !== profile.id));
+      setMessage("Utilisateur supprimé définitivement du site et de Supabase.");
+      return;
+    }
+
+    if (action === "unban") {
+      setUsers(list => list.map(u => u.id === profile.id ? { ...u, is_suspended: false, ban_until: null, ban_reason: null } : u));
+      setMessage("Utilisateur débanni avec succès.");
+      return;
+    }
+
+    const banUntil = data?.ban_until;
+    setUsers(list => list.map(u => u.id === profile.id ? { ...u, is_suspended: true, ban_until: banUntil } : u));
+    setMessage("Utilisateur banni. Sa session a été déconnectée.");
+  }
+
+  async function customBan(profile: Profile) {
+    const value = window.prompt("Durée du bannissement en heures :", "24");
+    if (!value) return;
+    const hours = Number(value.replace(",", "."));
+    if (!Number.isFinite(hours) || hours <= 0 || hours > 8760) {
+      setMessage("Entre une durée comprise entre 1 heure et 8760 heures.");
+      return;
+    }
+    await manageUser(profile, "ban", Math.round(hours * 3600));
   }
 
   async function toggleActivity(activity: any) {
@@ -90,7 +140,8 @@ export default function AdminPage() {
     ));
   }
 
-  const suspended = users.filter(u => u.is_suspended).length;
+  const isBanned = (u: Profile) => !!u.ban_until && new Date(u.ban_until).getTime() > Date.now();
+  const banned = users.filter(isBanned).length;
   const totalPoints = users.reduce((sum, u) => sum + (u.points_balance || 0), 0);
 
   if (loading) {
@@ -111,12 +162,12 @@ export default function AdminPage() {
       <section className="adminIntro">
         <span className="eyebrow">ESPACE PRIVÉ</span>
         <h1>Panel <b>administrateur</b></h1>
-        <p>Gestion complète d’AdPoints — accès réservé à ton compte.</p>
+        <p>Gestion complète et sécurisée des comptes AdPoints.</p>
       </section>
 
       <section className="adminStats">
         <article><small>Utilisateurs</small><strong>{users.length}</strong></article>
-        <article><small>Comptes suspendus</small><strong>{suspended}</strong></article>
+        <article><small>Comptes bannis</small><strong>{banned}</strong></article>
         <article><small>AdPoints en circulation</small><strong>{totalPoints}</strong></article>
         <article><small>Activités</small><strong>{activities.length}</strong></article>
       </section>
@@ -125,28 +176,47 @@ export default function AdminPage() {
 
       <section className="adminSection">
         <div className="adminSectionHead">
-          <div><h2>Utilisateurs</h2><p>Consulte et gère les comptes inscrits.</p></div>
+          <div><h2>Utilisateurs</h2><p>Bannis temporairement, débannis ou supprime définitivement un compte.</p></div>
           <button className="adminRefresh" onClick={load}>Actualiser</button>
         </div>
 
         <div className="adminList">
-          {users.map(user => (
-            <article className="adminUser" key={user.id}>
-              <div>
-                <strong>{user.username || "Sans pseudo"}</strong>
-                <span>{user.email}</span>
-              </div>
-              <div className="adminUserMeta">
-                <b>{user.points_balance || 0} AdPoints</b>
-                <span className={user.is_suspended ? "status suspended" : "status activeStatus"}>
-                  {user.is_suspended ? "Suspendu" : "Actif"}
-                </span>
-                <button onClick={() => toggleSuspension(user)}>
-                  {user.is_suspended ? "Réactiver" : "Suspendre"}
-                </button>
-              </div>
-            </article>
-          ))}
+          {users.map(user => {
+            const activeBan = isBanned(user);
+            const busy = busyId === user.id;
+            return (
+              <article className="adminUser" key={user.id}>
+                <div>
+                  <strong>{user.username || "Sans pseudo"}</strong>
+                  <span>{user.email}</span>
+                  {activeBan && <span className="muted">⛔ Bannissement restant : {remainingTime(user.ban_until!)}</span>}
+                </div>
+
+                <div className="adminUserMeta">
+                  <b>{user.points_balance || 0} AdPoints</b>
+                  <span className={activeBan ? "status suspended" : "status activeStatus"}>
+                    {activeBan ? "Banni" : "Actif"}
+                  </span>
+
+                  {activeBan ? (
+                    <button disabled={busy} onClick={() => manageUser(user, "unban")}>Débannir</button>
+                  ) : (
+                    <>
+                      <button disabled={busy} onClick={() => manageUser(user, "ban", 3600)}>Bannir 1h</button>
+                      <button disabled={busy} onClick={() => manageUser(user, "ban", 86400)}>24h</button>
+                      <button disabled={busy} onClick={() => manageUser(user, "ban", 604800)}>7j</button>
+                      <button disabled={busy} onClick={() => manageUser(user, "ban", 2592000)}>30j</button>
+                      <button disabled={busy} onClick={() => customBan(user)}>Durée perso</button>
+                    </>
+                  )}
+
+                  <button disabled={busy} onClick={() => manageUser(user, "delete")} style={{ borderColor: "#ef6b6b" }}>
+                    Supprimer
+                  </button>
+                </div>
+              </article>
+            );
+          })}
         </div>
       </section>
 
