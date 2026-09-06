@@ -489,3 +489,105 @@ html[dir="rtl"] body{direction:rtl}
   .languageCode,.languageChevron{display:none}
   .languageMenu{top:48px;width:180px}
 }
+
+
+/* === FPT BÊTA TEST - animated fire engine === */
+.dash > header.cleanTopHeader{position:relative!important;overflow:visible!important}
+.fireTruckBeta{
+  position:absolute;
+  left:22px;
+  top:16px;
+  width:220px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  z-index:3;
+  pointer-events:none;
+}
+.truckScene{
+  width:220px;
+  height:112px;
+  position:relative;
+  display:flex;
+  align-items:flex-end;
+  justify-content:center;
+}
+.fptTruck{
+  width:220px;
+  height:auto;
+  filter:drop-shadow(0 10px 12px rgba(0,0,0,.35));
+  animation:fptIdle 2.8s ease-in-out infinite;
+  position:relative;
+  z-index:2;
+}
+@keyframes fptIdle{
+  0%,100%{transform:translateY(0)}
+  50%{transform:translateY(-2px)}
+}
+.beacon{
+  animation:beaconFlash .65s steps(2,end) infinite;
+  filter:drop-shadow(0 0 2px currentColor);
+}
+.beaconBlue{fill:#45b9ff;color:#45b9ff}
+.beaconRed{fill:#ff3030;color:#ff3030;animation-delay:.32s}
+@keyframes beaconFlash{
+  0%,49%{opacity:.25}
+  50%,100%{opacity:1;filter:drop-shadow(0 0 10px currentColor)}
+}
+.sirenGlow{
+  position:absolute;
+  top:18px;
+  width:55px;
+  height:45px;
+  border-radius:50%;
+  filter:blur(15px);
+  opacity:.18;
+  animation:sirenPulse .65s ease-in-out infinite alternate;
+}
+.sirenBlue{left:52px;background:#249dff}
+.sirenRed{right:50px;background:#ff2b35;animation-delay:.32s}
+@keyframes sirenPulse{
+  from{opacity:.05;transform:scale(.8)}
+  to{opacity:.55;transform:scale(1.15)}
+}
+.roadGlow{
+  position:absolute;
+  bottom:4px;
+  width:185px;
+  height:2px;
+  background:linear-gradient(90deg,transparent,#6b7f8e,transparent);
+  box-shadow:0 0 12px rgba(105,219,163,.18);
+}
+.betaLabel{
+  margin-top:-2px;
+  padding:5px 14px;
+  border-radius:999px;
+  border:1px solid rgba(255,73,73,.55);
+  background:rgba(130,15,20,.28);
+  color:#ff8b8b;
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:.18em;
+  text-shadow:0 0 12px rgba(255,70,70,.35);
+}
+
+@media(max-width:760px){
+  .dash > header.cleanTopHeader{
+    min-height:250px!important;
+    padding-top:128px!important;
+  }
+  .fireTruckBeta{
+    left:8px;
+    top:8px;
+    width:170px;
+  }
+  .truckScene{width:170px;height:92px}
+  .fptTruck{width:170px}
+  .betaLabel{font-size:10px;padding:4px 10px}
+  .sirenGlow{top:13px;width:42px;height:36px}
+  .sirenBlue{left:38px}
+  .sirenRed{right:36px}
+}
+@media(max-width:480px){
+  .fireTruckBeta{left:4px;transform:scale(.86);transform-origin:top left}
+}
