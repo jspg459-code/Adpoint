@@ -16,7 +16,7 @@ export default function SignupPage(){
   async function submit(e:FormEvent){
     e.preventDefault(); setMessage(""); setLoading(true);
     const {data,error}=await supabase.auth.signUp({email,password});
-    if(error){setLoading(false);setMessage(error.message);return;}
+    if(error){setLoading(false);setMessage("Impossible de créer le compte pour le moment. Réessaie dans quelques minutes.");return;}
     if(data.user&&username.trim()){
       await supabase.from("profiles").update({username:username.trim()}).eq("id",data.user.id);
     }
