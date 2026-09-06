@@ -14,6 +14,17 @@ function frenchError(error:string){
   return "Une erreur est survenue. Vérifie tes informations et réessaie.";
 }
 
+function formatRemaining(date:string){
+  const ms=new Date(date).getTime()-Date.now();
+  const total=Math.max(0,Math.ceil(ms/60000));
+  const d=Math.floor(total/1440);
+  const h=Math.floor((total%1440)/60);
+  const m=total%60;
+  if(d>0) return `${d} jour(s), ${h} heure(s)`;
+  if(h>0) return `${h} heure(s), ${m} minute(s)`;
+  return `${m} minute(s)`;
+}
+
 export default function LoginPage(){
   const router=useRouter();
   const [email,setEmail]=useState("");
@@ -33,18 +44,42 @@ export default function LoginPage(){
       password
     });
 
-    setLoading(false);
-
     if(error){
+      setLoading(false);
       setMessage(frenchError(error.message));
       return;
     }
 
-    if(!data.session){
+    if(!data.session || !data.user){
+      setLoading(false);
       setMessage("Connexion impossible. Réessaie dans quelques secondes.");
       return;
     }
 
+    const {data:profile}=await supabase
+      .from("profiles")
+      .select("ban_until,ban_reason,is_suspended")
+      .eq("id",data.user.id)
+      .single();
+
+    const activeBan=profile?.ban_until && new Date(profile.ban_until).getTime()>Date.now();
+
+    if(activeBan){
+      await supabase.auth.signOut();
+      setLoading(false);
+      const reason=profile?.ban_reason ? ` Motif : ${profile.ban_reason}.` : "";
+      setMessage(`⛔ Ton compte est banni. Temps restant : ${formatRemaining(profile.ban_until!)}.${reason}`);
+      return;
+    }
+
+    if(profile?.is_suspended && !profile?.ban_until){
+      await supabase.auth.signOut();
+      setLoading(false);
+      setMessage("⛔ Ton compte est actuellement suspendu. Contacte l’administrateur.");
+      return;
+    }
+
+    setLoading(false);
     router.replace("/dashboard");
   }
 
