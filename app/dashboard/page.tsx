@@ -12,6 +12,7 @@ export default function Dashboard(){
  const [username,setUsername]=useState("");
  const [saving,setSaving]=useState(false);
  const [message,setMessage]=useState("");
+ const [isAdmin,setIsAdmin]=useState(false);
 
  useEffect(()=>{load();},[]);
 
@@ -19,10 +20,11 @@ export default function Dashboard(){
   const {data:{user}}=await supabase.auth.getUser();
   if(!user){router.replace("/login");return;}
   const [{data:p},{data:a}]=await Promise.all([
-   supabase.from("profiles").select("username,email,points_balance").eq("id",user.id).single(),
+   supabase.from("profiles").select("username,email,points_balance,role").eq("id",user.id).single(),
    supabase.from("activities").select("*").eq("is_active",true).order("created_at")
   ]);
   setProfile(p); setUsername(p?.username||""); setActivities(a||[]);
+  setIsAdmin(user.email?.toLowerCase()==="jspg459@gmail.com" && p?.role==="admin");
  }
 
  async function save(){
@@ -48,6 +50,7 @@ export default function Dashboard(){
    <nav className="cleanTextNav">
     <Link href="/dashboard" className="active">Tableau de bord</Link>
     <Link href="/profile">Mon profil</Link>
+    {isAdmin&&<Link href="/admin">Administration</Link>}
     <button onClick={logout}>Déconnexion</button>
    </nav>
   </header>
