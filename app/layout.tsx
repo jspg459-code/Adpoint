@@ -12,13 +12,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         {children}
 
-        {/* Dedicated viewport overlay: this is outside all scrolling page content. */}
-        <div className="siteViewportOverlay" aria-hidden="false">
-          <div className="globalBetaBadge" aria-label="Version bêta">
-            BÊTA TEST
-          </div>
-          <LanguageSelector />
+        {/* Fixed viewport controls mounted directly under body. */}
+        <div className="globalBetaBadge" aria-label="Version bêta">
+          BÊTA TEST
         </div>
+        <LanguageSelector />
       </body>
     </html>
   );
