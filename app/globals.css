@@ -891,3 +891,137 @@ body > .languageWidget{
     display:none;
   }
 }
+
+/* === FINAL HEADER CONTROL LAYOUT ===
+   Beta and language selector each have their own reserved position. */
+.cleanTopHeader::after,
+.modernHeader::after{
+  content:none!important;
+  display:none!important;
+}
+
+/* Fallback on pages without a header */
+.betaHeaderBadge{
+  position:fixed!important;
+  top:calc(env(safe-area-inset-top, 0px) + 10px)!important;
+  left:50%!important;
+  transform:translateX(-50%)!important;
+  z-index:2147483646!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  padding:7px 16px!important;
+  border-radius:999px!important;
+  border:1px solid rgba(92,229,154,.55)!important;
+  background:rgba(31,153,101,.18)!important;
+  color:#8de0b1!important;
+  font-size:11px!important;
+  font-weight:900!important;
+  letter-spacing:.15em!important;
+  white-space:nowrap!important;
+  box-shadow:0 8px 24px rgba(0,0,0,.25)!important;
+  backdrop-filter:blur(10px)!important;
+  -webkit-backdrop-filter:blur(10px)!important;
+  pointer-events:none!important;
+}
+
+/* Once mounted in the sticky header, the badge has its own top row. */
+.cleanTopHeader .betaHeaderBadge,
+.modernHeader .betaHeaderBadge{
+  position:absolute!important;
+  top:10px!important;
+  left:50%!important;
+  right:auto!important;
+  bottom:auto!important;
+  transform:translateX(-50%)!important;
+  z-index:1300!important;
+}
+
+/* Dashboard / private pages: leave a dedicated row for the controls. */
+.dash > header.cleanTopHeader{
+  position:sticky!important;
+  top:0!important;
+  z-index:1000!important;
+  min-height:154px!important;
+  padding-top:52px!important;
+  padding-bottom:18px!important;
+  overflow:visible!important;
+}
+.dash > header.cleanTopHeader .languageWidget{
+  position:absolute!important;
+  top:10px!important;
+  right:12px!important;
+  left:auto!important;
+  bottom:auto!important;
+  transform:none!important;
+  z-index:1400!important;
+}
+.dash > header.cleanTopHeader .textBrand{
+  margin-top:0!important;
+}
+
+/* Landing pages: put Beta on its own top line, then the logo/actions below. */
+.modernHeader{
+  position:sticky!important;
+  top:0!important;
+  z-index:1000!important;
+  min-height:112px!important;
+  height:auto!important;
+  padding-top:50px!important;
+  padding-bottom:12px!important;
+  overflow:visible!important;
+}
+.modernHeader .languageWidget{
+  position:absolute!important;
+  top:10px!important;
+  right:12px!important;
+  left:auto!important;
+  bottom:auto!important;
+  transform:none!important;
+  z-index:1400!important;
+}
+.modernHeader .modernNav{
+  padding-right:0!important;
+}
+
+@media(max-width:760px){
+  .dash > header.cleanTopHeader{
+    min-height:164px!important;
+    padding-top:50px!important;
+    padding-bottom:18px!important;
+  }
+  .cleanTopHeader .betaHeaderBadge,
+  .modernHeader .betaHeaderBadge{
+    top:8px!important;
+    font-size:10px!important;
+    padding:6px 14px!important;
+  }
+  .dash > header.cleanTopHeader .languageWidget,
+  .modernHeader .languageWidget{
+    top:8px!important;
+    right:10px!important;
+  }
+  .modernHeader{
+    min-height:0!important;
+    padding-top:52px!important;
+  }
+}
+
+/* Keep the flag compact and completely independent from page actions. */
+.cleanTopHeader .languageButton,
+.modernHeader .languageButton{
+  width:54px!important;
+  min-width:54px!important;
+  height:42px!important;
+  min-height:42px!important;
+  padding:0!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+}
+.cleanTopHeader .languageCode,
+.cleanTopHeader .languageChevron,
+.modernHeader .languageCode,
+.modernHeader .languageChevron{
+  display:none!important;
+}
