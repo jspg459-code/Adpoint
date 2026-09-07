@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
+import { logAudit } from "../lib/audit";
 
 function frenchError(error:string){
   const e=error.toLowerCase();
@@ -79,6 +80,7 @@ export default function LoginPage(){
       return;
     }
 
+    await logAudit("login_success", { method: "password" }, "/login");
     setLoading(false);
     router.replace("/dashboard");
   }
