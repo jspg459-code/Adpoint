@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
+import { logAudit } from "../lib/audit";
 
 type Profile = {
   id: string;
@@ -111,12 +112,14 @@ export default function AdminPage() {
     }
 
     if (action === "delete") {
+      await logAudit("admin_delete_user", { target_user_id: profile.id, target: profile.username || profile.email }, "/admin");
       setUsers(list => list.filter(u => u.id !== profile.id));
       setMessage("Compte supprimé définitivement du site et de Supabase.");
       return true;
     }
 
     if (action === "unban") {
+      await logAudit("admin_unban_user", { target_user_id: profile.id, target: profile.username || profile.email }, "/admin");
       setUsers(list =>
         list.map(u =>
           u.id === profile.id
@@ -129,6 +132,12 @@ export default function AdminPage() {
     }
 
     const banUntil = data?.ban_until;
+    await logAudit("admin_ban_user", {
+      target_user_id: profile.id,
+      target: profile.username || profile.email,
+      duration_seconds: durationSeconds || null,
+      reason: reason || null
+    }, "/admin");
     setUsers(list =>
       list.map(u =>
         u.id === profile.id
@@ -211,6 +220,12 @@ export default function AdminPage() {
       return;
     }
 
+    await logAudit("admin_toggle_activity", {
+      activity_id: activity.id,
+      activity: activity.title,
+      is_active: !activity.is_active
+    }, "/admin");
+
     setActivities(list =>
       list.map(a => a.id === activity.id ? { ...a, is_active: !a.is_active } : a)
     );
@@ -232,6 +247,7 @@ export default function AdminPage() {
           <Link href="/dashboard">Tableau de bord</Link>
           <Link href="/profile">Mon profil</Link>
           <Link href="/admin" className="active">Administration</Link>
+          <Link href="/admin/logs">Logs</Link>
         </nav>
       </header>
 
@@ -256,7 +272,10 @@ export default function AdminPage() {
             <h2>Utilisateurs</h2>
             <p>Un seul bouton pour gérer le bannissement, avec durée personnalisée, BAN DÉF et débannissement.</p>
           </div>
-          <button className="adminRefresh" onClick={load}>Actualiser</button>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <Link href="/admin/logs" className="adminRefresh">Logs</Link>
+            <button className="adminRefresh" onClick={load}>Actualiser</button>
+          </div>
         </div>
 
         <div className="adminList">
