@@ -64,12 +64,8 @@ export default function AdminLogsPage() {
       return;
     }
 
-    // Un admin peut consulter uniquement les logs individuels accessibles depuis
-    // la fiche d'un utilisateur. Les logs globaux restent réservés au Créateur.
-    if (isAdmin && !selectedId) {
-      router.replace("/admin");
-      return;
-    }
+    // Créateur et administrateurs ont accès aux logs globaux.
+    // La sécurité Supabase masque automatiquement les logs du Créateur aux administrateurs.
 
     const [{ data: auditRows, error: auditError }, { data: profileRows, error: profileError }] =
       await Promise.all([
