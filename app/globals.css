@@ -631,3 +631,51 @@ html[dir="rtl"] body{direction:rtl}
 .adminModal textarea{min-height:95px;resize:vertical}
 .adminModalActions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
 .permanentBanButton{width:100%;margin-top:14px;padding:11px;border-radius:10px;border:1px solid rgba(255,70,70,.5);background:rgba(170,20,25,.16);color:#ff8d8d;font-weight:900}
+
+
+/* === GLOBAL FIXED CONTROLS ===
+   These controls live above every page and never move with page content. */
+.globalBetaBadge{
+  position:fixed!important;
+  top:max(12px, env(safe-area-inset-top))!important;
+  left:50%!important;
+  transform:translateX(-50%)!important;
+  z-index:2147483646!important;
+  pointer-events:none!important;
+  padding:7px 16px!important;
+  border-radius:999px!important;
+  background:rgba(45,190,120,.16)!important;
+  border:1px solid rgba(92,229,154,.55)!important;
+  color:#8de0b1!important;
+  font-size:12px!important;
+  font-weight:800!important;
+  letter-spacing:.14em!important;
+  text-transform:uppercase!important;
+  box-shadow:0 8px 24px rgba(0,0,0,.22)!important;
+  backdrop-filter:blur(10px)!important;
+  -webkit-backdrop-filter:blur(10px)!important;
+  isolation:isolate!important;
+}
+
+.languageWidget{
+  position:fixed!important;
+  top:max(12px, env(safe-area-inset-top))!important;
+  right:max(12px, env(safe-area-inset-right))!important;
+  left:auto!important;
+  bottom:auto!important;
+  z-index:2147483647!important;
+  transform:none!important;
+  isolation:isolate!important;
+}
+
+@media(max-width:760px){
+  .globalBetaBadge{
+    top:max(10px, env(safe-area-inset-top))!important;
+    padding:6px 14px!important;
+    font-size:10px!important;
+  }
+  .languageWidget{
+    top:max(10px, env(safe-area-inset-top))!important;
+    right:max(10px, env(safe-area-inset-right))!important;
+  }
+}
