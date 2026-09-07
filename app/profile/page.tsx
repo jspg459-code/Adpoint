@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
+import { logAudit } from "../lib/audit";
 
 const WEEK = 7 * 24 * 60 * 60 * 1000;
 
@@ -81,6 +82,7 @@ export default function ProfilePage() {
       setUsername(data.username || cleanUsername);
       setSavedUsername(data.username || cleanUsername);
       setChangedAt(data.username_changed_at || new Date().toISOString());
+      await logAudit("profile_username_updated", { username: data.username || cleanUsername }, "/profile");
       setMessage({type:"success",text:"Pseudo enregistré ! Tu pourras le modifier à nouveau dans 7 jours."});
     } catch (error:any) {
       setMessage({type:"error",text:error?.message || "Impossible d’enregistrer le pseudo. Réessaie."});
@@ -90,6 +92,7 @@ export default function ProfilePage() {
   }
 
   async function logout() {
+    await logAudit("logout", {}, "/profile");
     await supabase.auth.signOut();
     router.replace("/");
   }
