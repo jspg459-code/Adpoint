@@ -36,7 +36,7 @@ export default function Dashboard(){
   setProfile(p); setUsername(p?.username||""); setActivities(a||[]);
   // Tous les comptes ayant le rôle admin voient l'accès Administration.
   // Seul le propriétaire peut nommer d'autres administrateurs (contrôle côté panel/serveur).
-  setIsAdmin(p?.role === "admin");
+  setIsAdmin(p?.role === "admin" || p?.role === "creator");
  }
 
  async function save(){
