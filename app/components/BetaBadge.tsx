@@ -4,15 +4,10 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 export default function BetaBadge() {
-  const [host, setHost] = useState<HTMLElement | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const findHost = () =>
-      setHost(document.querySelector<HTMLElement>(".cleanTopHeader, .modernHeader, nav"));
-    findHost();
-    const observer = new MutationObserver(findHost);
-    observer.observe(document.body, { childList: true, subtree: true });
-    return () => observer.disconnect();
+    setMounted(true);
   }, []);
 
   const badge = (
@@ -21,5 +16,6 @@ export default function BetaBadge() {
     </div>
   );
 
-  return host ? createPortal(badge, host) : badge;
+  if (!mounted) return badge;
+  return createPortal(badge, document.body);
 }
