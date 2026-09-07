@@ -307,7 +307,7 @@ export default function AdminPage() {
 
                   <Link
                     href={`/admin/logs?user=${user.id}`}
-                    className="adminUserLogs"
+                    className="adminRefresh"
                     aria-label={`Voir les logs de ${user.username || user.email}`}
                   >
                     Logs
