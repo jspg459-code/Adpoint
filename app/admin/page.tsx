@@ -73,7 +73,7 @@ export default function AdminPage() {
     setLoading(false);
   }
 
-  async function manageUser(profile: Profile, action: "ban" | "unban" | "delete", durationSeconds?: number) {
+  async function manageUser(profile: Profile, action: "ban" | "unban" | "delete", durationSeconds?: number, banReason?: string) {
     if (action === "delete" && !window.confirm(`Supprimer définitivement ${profile.email} ? Cette action supprimera aussi son compte Supabase et ses données associées.`)) return;
     if (action === "ban" && !durationSeconds) return;
 
@@ -85,7 +85,7 @@ export default function AdminPage() {
         action,
         userId: profile.id,
         durationSeconds,
-        reason: action === "ban" ? "Bannissement décidé par l’administrateur." : undefined
+        reason: action === "ban" ? (banReason || "Bannissement décidé par l’administrateur.") : undefined
       }
     });
 
@@ -109,8 +109,22 @@ export default function AdminPage() {
     }
 
     const banUntil = data?.ban_until;
-    setUsers(list => list.map(u => u.id === profile.id ? { ...u, is_suspended: true, ban_until: banUntil } : u));
+    setUsers(list => list.map(u => u.id === profile.id ? { ...u, is_suspended: true, ban_until: banUntil, ban_reason: banReason || "Bannissement décidé par l’administrateur." } : u));
     setMessage("Utilisateur banni avec succès.");
+  }
+
+
+  async function banUser(profile: Profile, durationSeconds: number) {
+    const reason = window.prompt(`Motif du bannissement de ${profile.username || profile.email} :`, "");
+    if (reason === null) return;
+
+    const cleanReason = reason.trim();
+    if (!cleanReason) {
+      setMessage("Tu dois indiquer une raison avant de bannir cet utilisateur.");
+      return;
+    }
+
+    await manageUser(profile, "ban", durationSeconds, cleanReason);
   }
 
   async function customBan(profile: Profile) {
@@ -121,7 +135,14 @@ export default function AdminPage() {
       setMessage("Entre une durée comprise entre 1 heure et 8760 heures.");
       return;
     }
-    await manageUser(profile, "ban", Math.round(hours * 3600));
+    const reason = window.prompt(`Motif du bannissement de ${profile.username || profile.email} :`, "");
+    if (reason === null) return;
+    const cleanReason = reason.trim();
+    if (!cleanReason) {
+      setMessage("Tu dois indiquer une raison avant de bannir cet utilisateur.");
+      return;
+    }
+    await manageUser(profile, "ban", Math.round(hours * 3600), cleanReason);
   }
 
   async function toggleActivity(activity: any) {
@@ -189,7 +210,10 @@ export default function AdminPage() {
                 <div>
                   <strong>{user.username || "Sans pseudo"}</strong>
                   <span>{user.email}</span>
-                  {activeBan && <span className="muted">⛔ Bannissement restant : {remainingTime(user.ban_until!)}</span>}
+                  {activeBan && <>
+                    <span className="muted">⛔ Motif : {user.ban_reason || "Non précisé"}</span>
+                    <span className="muted">⏳ Bannissement restant : {remainingTime(user.ban_until!)}</span>
+                  </>}
                 </div>
 
                 <div className="adminUserMeta">
@@ -202,10 +226,10 @@ export default function AdminPage() {
                     <button disabled={busy} onClick={() => manageUser(user, "unban")}>Débannir</button>
                   ) : (
                     <>
-                      <button disabled={busy} onClick={() => manageUser(user, "ban", 3600)}>Bannir 1h</button>
-                      <button disabled={busy} onClick={() => manageUser(user, "ban", 86400)}>24h</button>
-                      <button disabled={busy} onClick={() => manageUser(user, "ban", 604800)}>7j</button>
-                      <button disabled={busy} onClick={() => manageUser(user, "ban", 2592000)}>30j</button>
+                      <button disabled={busy} onClick={() => banUser(user, 3600)}>Bannir 1h</button>
+                      <button disabled={busy} onClick={() => banUser(user, 86400)}>24h</button>
+                      <button disabled={busy} onClick={() => banUser(user, 604800)}>7j</button>
+                      <button disabled={busy} onClick={() => banUser(user, 2592000)}>30j</button>
                       <button disabled={busy} onClick={() => customBan(user)}>Durée perso</button>
                     </>
                   )}
