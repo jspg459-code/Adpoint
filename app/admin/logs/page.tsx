@@ -54,7 +54,7 @@ export default function AdminLogsPage() {
       .eq("id", user.id)
       .single();
 
-    if (me?.role !== "admin") {
+    if (me?.role !== "creator") {
       router.replace("/dashboard");
       return;
     }
