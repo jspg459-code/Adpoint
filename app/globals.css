@@ -679,3 +679,55 @@ html[dir="rtl"] body{direction:rtl}
     right:max(10px, env(safe-area-inset-right))!important;
   }
 }
+
+/* === ABSOLUTE FINAL VIEWPORT OVERLAY ===
+   One single non-scrolling layer, mounted directly under <body>.
+   It is deliberately independent from every page/header/container. */
+.siteViewportOverlay{
+  position:fixed!important;
+  inset:0!important;
+  width:100vw!important;
+  height:100dvh!important;
+  z-index:2147483647!important;
+  pointer-events:none!important;
+  overflow:visible!important;
+  contain:layout style paint!important;
+  transform:translate3d(0,0,0)!important;
+  -webkit-transform:translate3d(0,0,0)!important;
+  backface-visibility:hidden!important;
+  -webkit-backface-visibility:hidden!important;
+}
+.siteViewportOverlay .globalBetaBadge{
+  position:absolute!important;
+  top:calc(env(safe-area-inset-top, 0px) + 10px)!important;
+  left:50%!important;
+  right:auto!important;
+  bottom:auto!important;
+  transform:translateX(-50%) translateZ(0)!important;
+  -webkit-transform:translateX(-50%) translateZ(0)!important;
+  z-index:2!important;
+  pointer-events:none!important;
+}
+.siteViewportOverlay .languageWidget{
+  position:absolute!important;
+  top:calc(env(safe-area-inset-top, 0px) + 10px)!important;
+  right:12px!important;
+  left:auto!important;
+  bottom:auto!important;
+  transform:translateZ(0)!important;
+  -webkit-transform:translateZ(0)!important;
+  z-index:3!important;
+  pointer-events:auto!important;
+}
+.siteViewportOverlay .languageMenu{
+  pointer-events:auto!important;
+}
+@media(max-width:760px){
+  .siteViewportOverlay .globalBetaBadge{
+    top:calc(env(safe-area-inset-top, 0px) + 8px)!important;
+  }
+  .siteViewportOverlay .languageWidget{
+    top:calc(env(safe-area-inset-top, 0px) + 8px)!important;
+    right:10px!important;
+  }
+}
