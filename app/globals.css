@@ -731,3 +731,38 @@ html[dir="rtl"] body{direction:rtl}
     right:10px!important;
   }
 }
+
+/* === FINAL DIRECT BODY VIEWPORT FIX ===
+   The two controls are direct children of <body>; no scrolling container,
+   transform or overlay wrapper can capture their positioning. */
+body > .globalBetaBadge{
+  position:fixed!important;
+  top:calc(env(safe-area-inset-top, 0px) + 10px)!important;
+  left:50%!important;
+  right:auto!important;
+  bottom:auto!important;
+  transform:translate3d(-50%,0,0)!important;
+  -webkit-transform:translate3d(-50%,0,0)!important;
+  z-index:2147483646!important;
+  will-change:transform!important;
+}
+body > .languageWidget{
+  position:fixed!important;
+  top:calc(env(safe-area-inset-top, 0px) + 10px)!important;
+  right:12px!important;
+  left:auto!important;
+  bottom:auto!important;
+  transform:translate3d(0,0,0)!important;
+  -webkit-transform:translate3d(0,0,0)!important;
+  z-index:2147483647!important;
+  will-change:transform!important;
+}
+@media(max-width:760px){
+  body > .globalBetaBadge{
+    top:calc(env(safe-area-inset-top, 0px) + 8px)!important;
+  }
+  body > .languageWidget{
+    top:calc(env(safe-area-inset-top, 0px) + 8px)!important;
+    right:10px!important;
+  }
+}
