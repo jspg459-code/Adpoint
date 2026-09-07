@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 
 type AuditLog = {
@@ -30,8 +30,7 @@ function formatAction(action: string) {
 
 export default function AdminLogsPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const selectedUserId = searchParams.get("user") || "";
+  const [selectedUserId, setSelectedUserId] = useState("");
   const [loading, setLoading] = useState(true);
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
@@ -86,7 +85,10 @@ export default function AdminLogsPage() {
     setLoading(false);
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    setSelectedUserId(new URLSearchParams(window.location.search).get("user") || "");
+    load();
+  }, []);
 
   const actions = useMemo(
     () => Array.from(new Set(logs.map(log => log.action))).sort(),
