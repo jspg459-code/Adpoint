@@ -34,7 +34,9 @@ export default function Dashboard(){
   }
 
   setProfile(p); setUsername(p?.username||""); setActivities(a||[]);
-  setIsAdmin(user.email?.toLowerCase()==="jspg459@gmail.com" && p?.role==="admin");
+  // Tous les comptes ayant le rôle admin voient l'accès Administration.
+  // Seul le propriétaire peut nommer d'autres administrateurs (contrôle côté panel/serveur).
+  setIsAdmin(p?.role === "admin");
  }
 
  async function save(){
