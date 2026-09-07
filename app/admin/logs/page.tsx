@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 
 type AuditLog = {
@@ -30,6 +30,8 @@ function formatAction(action: string) {
 
 export default function AdminLogsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const selectedUserId = searchParams.get("user") || "";
   const [loading, setLoading] = useState(true);
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
@@ -95,6 +97,7 @@ export default function AdminLogsPage() {
     const query = search.trim().toLowerCase();
 
     return logs.filter(log => {
+      if (selectedUserId && log.user_id !== selectedUserId) return false;
       if (actionFilter !== "all" && log.action !== actionFilter) return false;
       if (!query) return true;
 
@@ -109,7 +112,7 @@ export default function AdminLogsPage() {
 
       return haystack.includes(query);
     });
-  }, [logs, profiles, search, actionFilter]);
+  }, [logs, profiles, search, actionFilter, selectedUserId]);
 
   if (loading) {
     return <main className="dash adminPage"><p className="muted">Chargement des logs...</p></main>;
@@ -128,9 +131,10 @@ export default function AdminLogsPage() {
       </header>
 
       <section className="adminIntro">
-        <span className="eyebrow">SUIVI DU SITE</span>
-        <h1>Journal des <b>actions</b></h1>
-        <p>Retrouve les actions et les pages consultées par les utilisateurs connectés.</p>
+        <span className="eyebrow">{selectedUserId ? "LOGS INDIVIDUELS" : "SUIVI DU SITE"}</span>
+        <h1>{selectedUserId ? "Journal de l’" : "Journal des "}<b>{selectedUserId ? (profiles[selectedUserId]?.username || profiles[selectedUserId]?.email || "utilisateur") : "actions"}</b></h1>
+        <p>{selectedUserId ? "Retrouve uniquement les actions réalisées par cet utilisateur." : "Retrouve les actions et les pages consultées par les utilisateurs connectés."}</p>
+        {selectedUserId && <Link href="/admin/logs" className="adminRefresh">← Voir tous les logs</Link>}
       </section>
 
       <section className="adminStats">
