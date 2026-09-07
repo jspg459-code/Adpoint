@@ -45,6 +45,10 @@ export default function AdminPage() {
   const [banUnit, setBanUnit] = useState<"minutes" | "hours" | "days">("hours");
   const [banReason, setBanReason] = useState("");
 
+  const [editDialogUser, setEditDialogUser] = useState<Profile | null>(null);
+  const [editUsername, setEditUsername] = useState("");
+  const [pointsDelta, setPointsDelta] = useState("");
+
   useEffect(() => { load(); }, []);
 
   async function load() {
@@ -152,6 +156,76 @@ export default function AdminPage() {
     );
     setMessage("Utilisateur banni avec succès.");
     return true;
+  }
+
+  function openEditDialog(profile: Profile) {
+    setEditDialogUser(profile);
+    setEditUsername(profile.username || "");
+    setPointsDelta("");
+    setMessage("");
+  }
+
+  function closeEditDialog() {
+    setEditDialogUser(null);
+    setEditUsername("");
+    setPointsDelta("");
+  }
+
+  async function saveUserChanges() {
+    if (!editDialogUser) return;
+
+    const username = editUsername.trim();
+    const delta = pointsDelta.trim() === "" ? 0 : Number(pointsDelta);
+
+    if (!username) {
+      setMessage("Le pseudo ne peut pas être vide.");
+      return;
+    }
+    if (!Number.isFinite(delta)) {
+      setMessage("Indique un nombre valide pour les AdPoints.");
+      return;
+    }
+
+    const nextPoints = Math.max(0, (editDialogUser.points_balance || 0) + delta);
+    setBusyId(editDialogUser.id);
+    setMessage("");
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ username, points_balance: nextPoints })
+      .eq("id", editDialogUser.id);
+
+    setBusyId(null);
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    if (username !== (editDialogUser.username || "")) {
+      await logAudit("admin_update_username", {
+        target_user_id: editDialogUser.id,
+        previous_username: editDialogUser.username || null,
+        username
+      }, "/admin");
+    }
+
+    if (delta !== 0) {
+      await logAudit("admin_adjust_points", {
+        target_user_id: editDialogUser.id,
+        delta,
+        previous_points: editDialogUser.points_balance || 0,
+        points_balance: nextPoints
+      }, "/admin");
+    }
+
+    setUsers(list => list.map(u =>
+      u.id === editDialogUser.id
+        ? { ...u, username, points_balance: nextPoints }
+        : u
+    ));
+    setMessage("Utilisateur modifié avec succès.");
+    closeEditDialog();
   }
 
   function openBanDialog(profile: Profile) {
@@ -307,18 +381,26 @@ export default function AdminPage() {
 
                   <Link
                     href={`/admin/logs?user=${user.id}`}
-                    className="adminRefresh"
+                    className="adminUserAction adminLogsButton"
                     aria-label={`Voir les logs de ${user.username || user.email}`}
                   >
                     Logs
                   </Link>
 
+                  <button
+                    className="adminUserAction"
+                    disabled={busy}
+                    onClick={() => openEditDialog(user)}
+                  >
+                    Modifier
+                  </button>
+
                   {activeBan ? (
-                    <button disabled={busy} onClick={() => manageUser(user, "unban")}>
+                    <button className="adminUserAction" disabled={busy} onClick={() => manageUser(user, "unban")}>
                       {busy ? "..." : "Débannir"}
                     </button>
                   ) : (
-                    <button disabled={busy} onClick={() => openBanDialog(user)}>
+                    <button className="adminUserAction" disabled={busy} onClick={() => openBanDialog(user)}>
                       {busy ? "..." : "Bannir"}
                     </button>
                   )}
@@ -355,6 +437,45 @@ export default function AdminPage() {
           ))}
         </div>
       </section>
+
+
+      {editDialogUser && (
+        <div className="adminModalBackdrop" onClick={closeEditDialog}>
+          <div className="adminModal userEditModal" onClick={(e) => e.stopPropagation()}>
+            <h2>Modifier {editDialogUser.username || editDialogUser.email}</h2>
+            <p className="muted">Modifie le pseudo et ajoute ou retire des AdPoints.</p>
+
+            <label>Pseudo</label>
+            <input
+              value={editUsername}
+              onChange={(e) => setEditUsername(e.target.value)}
+              placeholder="Pseudo de l'utilisateur"
+              maxLength={40}
+            />
+
+            <label>AdPoints</label>
+            <div className="pointsAdjustInfo">
+              Solde actuel : <b>{editDialogUser.points_balance || 0} AdPoints</b>
+            </div>
+            <input
+              type="number"
+              step="1"
+              value={pointsDelta}
+              onChange={(e) => setPointsDelta(e.target.value)}
+              placeholder="Ex. 50 pour ajouter, -50 pour retirer"
+            />
+            <small className="muted">Nombre positif = ajouter • Nombre négatif = retirer</small>
+
+            <div className="adminModalActions">
+              <button onClick={closeEditDialog}>Annuler</button>
+              <button className="adminUserAction" disabled={busyId === editDialogUser.id} onClick={saveUserChanges}>
+                {busyId === editDialogUser.id ? "..." : "Enregistrer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {banDialogUser && (
         <div className="adminModalBackdrop" onClick={closeBanDialog}>
