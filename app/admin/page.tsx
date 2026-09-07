@@ -172,8 +172,8 @@ export default function AdminPage() {
 
   async function saveUsername() {
     if (!usernameDialogUser) return;
-    const username = editUsername.trim();
 
+    const username = editUsername.trim();
     if (!username) {
       setMessage("Le pseudo ne peut pas être vide.");
       return;
@@ -182,33 +182,39 @@ export default function AdminPage() {
     setBusyId(usernameDialogUser.id);
     setMessage("");
 
-    const { data, error } = await supabase
-      .rpc("admin_update_username", {
+    try {
+      // Même méthode que la modification des AdPoints : pas de dépendance à une RPC.
+      const { data, error } = await supabase
+        .from("profiles")
+        .update({ username })
+        .eq("id", usernameDialogUser.id)
+        .select("username")
+        .single();
+
+      if (error) {
+        setMessage(error.message || "Impossible de modifier le pseudo.");
+        return;
+      }
+
+      const savedUsername = data?.username || username;
+
+      await logAudit("admin_update_username", {
         target_user_id: usernameDialogUser.id,
-        new_username: username
-      })
-      .single();
+        previous_username: usernameDialogUser.username || null,
+        username: savedUsername
+      }, "/admin");
 
-    setBusyId(null);
+      setUsers(list => list.map(u =>
+        u.id === usernameDialogUser.id ? { ...u, username: savedUsername } : u
+      ));
 
-    if (error) {
-      setMessage(error.message || "Impossible de modifier le pseudo.");
-      return;
+      setMessage("Pseudo modifié avec succès.");
+      closeUsernameDialog();
+    } catch (err: any) {
+      setMessage(err?.message || "Impossible de modifier le pseudo.");
+    } finally {
+      setBusyId(null);
     }
-
-    const savedUsername = data?.username || username;
-
-    await logAudit("admin_update_username", {
-      target_user_id: usernameDialogUser.id,
-      previous_username: usernameDialogUser.username || null,
-      username: savedUsername
-    }, "/admin");
-
-    setUsers(list => list.map(u =>
-      u.id === usernameDialogUser.id ? { ...u, username: savedUsername } : u
-    ));
-    setMessage("Pseudo modifié avec succès.");
-    closeUsernameDialog();
   }
 
   function openPointsDialog(profile: Profile) {
@@ -485,6 +491,7 @@ export default function AdminPage() {
           <div className="adminModal userEditModal" onClick={(e) => e.stopPropagation()}>
             <h2>Modifier le pseudo</h2>
             <p className="muted">Modifie uniquement le pseudo de {usernameDialogUser.username || usernameDialogUser.email}.</p>
+            {message && <div className="profileMessage error" style={{ marginBottom: 16 }}>{message}</div>}
 
             <label>Nouveau pseudo</label>
             <input
