@@ -15,6 +15,7 @@ type Profile = {
   ban_until: string | null;
   ban_reason: string | null;
   created_at: string;
+  role: string | null;
 };
 
 type BanChoice = "1h" | "24h" | "7d" | "30d" | "custom" | "permanent";
@@ -38,6 +39,7 @@ export default function AdminPage() {
   const [activities, setActivities] = useState<any[]>([]);
   const [message, setMessage] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [isOwner, setIsOwner] = useState(false);
 
   const [banDialogUser, setBanDialogUser] = useState<Profile | null>(null);
   const [banChoice, setBanChoice] = useState<BanChoice>("24h");
@@ -57,7 +59,7 @@ export default function AdminPage() {
 
     const { data: { user } } = await supabase.auth.getUser();
 
-    if (!user || user.email?.toLowerCase() !== "jspg459@gmail.com") {
+    if (!user) {
       router.replace("/dashboard");
       return;
     }
@@ -73,11 +75,13 @@ export default function AdminPage() {
       return;
     }
 
+    setIsOwner(user.email?.toLowerCase() === "jspg459@gmail.com");
+
     const [{ data: profiles, error: profilesError }, { data: acts, error: activitiesError }] =
       await Promise.all([
         supabase
           .from("profiles")
-          .select("id,email,username,points_balance,is_suspended,ban_until,ban_reason,created_at")
+          .select("id,email,username,points_balance,is_suspended,ban_until,ban_reason,created_at,role")
           .order("created_at", { ascending: false }),
         supabase.from("activities").select("*").order("created_at", { ascending: false })
       ]);
@@ -157,6 +161,46 @@ export default function AdminPage() {
     );
     setMessage("Utilisateur banni avec succès.");
     return true;
+  }
+
+  async function toggleAdmin(profile: Profile) {
+    if (!isOwner) return;
+
+    const makeAdmin = profile.role !== "admin";
+    const label = profile.username || profile.email;
+
+    if (!window.confirm(makeAdmin
+      ? `Nommer ${label} administrateur ?`
+      : `Retirer les droits administrateur de ${label} ?`
+    )) return;
+
+    setBusyId(profile.id);
+    setMessage("");
+
+    const { data, error } = await supabase.functions.invoke("admin-user-management", {
+      body: {
+        action: "set_admin",
+        userId: profile.id,
+        makeAdmin
+      }
+    });
+
+    setBusyId(null);
+
+    if (error || data?.error) {
+      setMessage(data?.error || error?.message || "Impossible de modifier les droits administrateur.");
+      return;
+    }
+
+    await logAudit(makeAdmin ? "owner_promote_admin" : "owner_remove_admin", {
+      target_user_id: profile.id,
+      target: label
+    }, "/admin");
+
+    setUsers(list => list.map(u =>
+      u.id === profile.id ? { ...u, role: makeAdmin ? "admin" : "user" } : u
+    ));
+    setMessage(makeAdmin ? `${label} est maintenant administrateur.` : `Les droits administrateur de ${label} ont été retirés.`);
   }
 
   function openUsernameDialog(profile: Profile) {
@@ -422,6 +466,7 @@ export default function AdminPage() {
                   <span className={activeBan ? "status suspended" : "status activeStatus"}>
                     {activeBan ? "Banni" : "Actif"}
                   </span>
+                  {user.role === "admin" && <span className="status activeStatus">Admin</span>}
 
                   <Link
                     href={`/admin/logs?user=${user.id}`}
@@ -430,6 +475,16 @@ export default function AdminPage() {
                   >
                     Logs
                   </Link>
+
+                  {isOwner && user.email?.toLowerCase() !== "jspg459@gmail.com" && (
+                    <button
+                      className="adminUserAction adminCompactAction"
+                      disabled={busy}
+                      onClick={() => toggleAdmin(user)}
+                    >
+                      {busy ? "..." : user.role === "admin" ? "Retirer admin" : "Nommer admin"}
+                    </button>
+                  )}
 
                   <button
                     className="adminUserAction adminCompactAction"
