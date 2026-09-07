@@ -127,6 +127,39 @@ export default function AdminPage() {
     await manageUser(profile, "ban", durationSeconds, cleanReason, permanent);
   }
 
+  async function submitBan() {
+    if (!banDialogUser) return;
+    const cleanReason = banReason.trim();
+    if (!cleanReason) {
+      setMessage("Tu dois indiquer une raison avant de bannir cet utilisateur.");
+      return;
+    }
+    const amount = Number(banDuration);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setMessage("Indique une durée valide.");
+      return;
+    }
+    const seconds = banUnit === "minutes" ? amount * 60 : banUnit === "hours" ? amount * 3600 : amount * 86400;
+    await manageUser(banDialogUser, "ban", Math.round(seconds), cleanReason);
+    setBanDialogUser(null);
+    setBanReason("");
+    setBanDuration("24");
+    setBanUnit("hours");
+  }
+
+  async function permanentBanFromDialog() {
+    if (!banDialogUser) return;
+    const cleanReason = banReason.trim();
+    if (!cleanReason) {
+      setMessage("Tu dois indiquer une raison avant de supprimer définitivement le compte.");
+      return;
+    }
+    if (!window.confirm(`⚠️ Supprimer définitivement le compte de ${banDialogUser.username || banDialogUser.email} ? Cette action est irréversible.`)) return;
+    await manageUser(banDialogUser, "delete");
+    setBanDialogUser(null);
+    setBanReason("");
+  }
+
   async function customBan(profile: Profile) {
     const value = window.prompt("Durée du bannissement en heures :", "24");
     if (!value) return;
@@ -269,6 +302,31 @@ export default function AdminPage() {
           ))}
         </div>
       </section>
+      {banDialogUser && (
+        <div className="adminModalBackdrop" onClick={() => setBanDialogUser(null)}>
+          <div className="adminModal" onClick={(e) => e.stopPropagation()}>
+            <h2>🚫 Bannir {banDialogUser.username || banDialogUser.email}</h2>
+            <p className="muted">Choisis la durée et indique la raison du bannissement.</p>
+            <label>Durée</label>
+            <div className="banDurationRow">
+              <input type="number" min="1" value={banDuration} onChange={(e) => setBanDuration(e.target.value)} />
+              <select value={banUnit} onChange={(e) => setBanUnit(e.target.value as "minutes" | "hours" | "days")}>
+                <option value="minutes">Minutes</option>
+                <option value="hours">Heures</option>
+                <option value="days">Jours</option>
+              </select>
+            </div>
+            <label>Raison du ban</label>
+            <textarea value={banReason} onChange={(e) => setBanReason(e.target.value)} placeholder="Indique la raison du bannissement..." />
+            <div className="adminModalActions">
+              <button onClick={() => setBanDialogUser(null)}>Annuler</button>
+              <button className="danger" onClick={submitBan}>Bannir</button>
+            </div>
+            <button className="permanentBanButton" onClick={permanentBanFromDialog}>BAN DÉF — Supprimer définitivement le compte</button>
+          </div>
+        </div>
+      )}
+
     </main>
   );
 }
