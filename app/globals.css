@@ -816,3 +816,78 @@ body > .languageWidget{
     right:10px!important;
   }
 }
+
+
+/* === HEADER-ANCHORED CONTROLS ===
+   Same positioning system as the AdPoints logo: the controls are children of
+   the page header, so they follow exactly the header that already stays fixed. */
+.cleanTopHeader,
+.modernHeader{
+  position:sticky!important;
+  top:0!important;
+  z-index:1000!important;
+}
+
+.cleanTopHeader::after{
+  content:"BÊTA TEST";
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  color:#78e4aa;
+  background:rgba(31,153,101,.12);
+  border:1px solid rgba(67,226,145,.35);
+  border-radius:999px;
+  padding:7px 14px;
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.12em;
+  white-space:nowrap;
+  pointer-events:none;
+}
+
+.cleanTopHeader .languageWidget,
+.modernHeader .languageWidget{
+  position:absolute!important;
+  top:50%!important;
+  right:16px!important;
+  left:auto!important;
+  bottom:auto!important;
+  transform:translateY(-50%)!important;
+  z-index:1100!important;
+}
+
+.cleanTopHeader .languageButton,
+.modernHeader .languageButton{
+  background:rgba(9,22,35,.85)!important;
+  border:1px solid #38516a!important;
+  border-radius:12px!important;
+  padding:7px 10px!important;
+  min-height:38px!important;
+  color:#e7eef4!important;
+}
+
+.cleanTopHeader .languageMenu,
+.modernHeader .languageMenu{
+  position:absolute!important;
+  top:calc(100% + 8px)!important;
+  right:0!important;
+  left:auto!important;
+  z-index:1200!important;
+}
+
+@media(max-width:700px){
+  .cleanTopHeader::after{
+    font-size:9px;
+    padding:6px 10px;
+    letter-spacing:.09em;
+  }
+  .cleanTopHeader .languageWidget,
+  .modernHeader .languageWidget{
+    right:8px!important;
+  }
+  .cleanTopHeader .languageCode,
+  .modernHeader .languageCode{
+    display:none;
+  }
+}
