@@ -305,6 +305,14 @@ export default function AdminPage() {
                     {activeBan ? "Banni" : "Actif"}
                   </span>
 
+                  <Link
+                    href={`/admin/logs?user=${user.id}`}
+                    className="adminUserLogs"
+                    aria-label={`Voir les logs de ${user.username || user.email}`}
+                  >
+                    Logs
+                  </Link>
+
                   {activeBan ? (
                     <button disabled={busy} onClick={() => manageUser(user, "unban")}>
                       {busy ? "..." : "Débannir"}
