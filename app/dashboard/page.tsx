@@ -4,7 +4,6 @@ import Link from "next/link";
 import {useEffect,useState} from "react";
 import {useRouter} from "next/navigation";
 import {supabase} from "../lib/supabase";
-import FireTruckBeta from "../components/FireTruckBeta";
 
 export default function Dashboard(){
  const router=useRouter();
@@ -56,8 +55,8 @@ export default function Dashboard(){
 
  return <main className="dash">
   <header className="modernHeader cleanTopHeader">
-   <FireTruckBeta />
    <Link href="/dashboard" className="textBrand">Ad<span>Points</span></Link>
+   <div className="betaSiteBadge">BÊTA TEST</div>
    <nav className="cleanTextNav">
     <Link href="/dashboard" className="active">Tableau de bord</Link>
     <Link href="/profile">Mon profil</Link>
