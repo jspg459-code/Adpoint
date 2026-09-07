@@ -23,7 +23,6 @@ export default function Home() {
         </Link>
         <nav className="modernNav">
           <Link href="/login" className="navPill"><span>Connexion</span></Link>
-          <Link href="/signup" className="homePrimary">Créer mon compte</Link>
         </nav>
       </header>
 
