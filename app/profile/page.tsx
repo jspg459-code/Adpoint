@@ -46,7 +46,8 @@ export default function ProfilePage() {
   const changed = cleanUsername !== savedUsername;
   const valid = cleanUsername.length >= 3 && cleanUsername.length <= 24;
   const nextChange = changedAt ? new Date(new Date(changedAt).getTime() + WEEK) : null;
-  const locked = !!nextChange && nextChange.getTime() > Date.now();
+  // Les administrateurs ne sont pas soumis au délai de 7 jours.
+  const locked = !isAdmin && !!nextChange && nextChange.getTime() > Date.now();
   const remainingDays = locked && nextChange ? Math.ceil((nextChange.getTime() - Date.now()) / 86400000) : 0;
 
   async function save() {
@@ -83,7 +84,12 @@ export default function ProfilePage() {
       setSavedUsername(data.username || cleanUsername);
       setChangedAt(data.username_changed_at || new Date().toISOString());
       await logAudit("profile_username_updated", { username: data.username || cleanUsername }, "/profile");
-      setMessage({type:"success",text:"Pseudo enregistré ! Tu pourras le modifier à nouveau dans 7 jours."});
+      setMessage({
+        type:"success",
+        text: isAdmin
+          ? "Pseudo enregistré ! Les administrateurs peuvent le modifier à tout moment."
+          : "Pseudo enregistré ! Tu pourras le modifier à nouveau dans 7 jours."
+      });
     } catch (error:any) {
       setMessage({type:"error",text:error?.message || "Impossible d’enregistrer le pseudo. Réessaie."});
     } finally {
