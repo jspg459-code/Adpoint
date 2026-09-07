@@ -1138,3 +1138,72 @@ body > .languageWidget{
     font-size:13px!important;
   }
 }
+
+
+/* === Admin user actions: compact mobile-friendly controls === */
+.adminUserMeta{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.adminUserAction,
+.adminLogsButton{
+  min-width:auto!important;
+  width:auto!important;
+  min-height:44px!important;
+  height:44px!important;
+  padding:0 16px!important;
+  border-radius:12px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  font-size:15px!important;
+  font-weight:800!important;
+  text-decoration:none!important;
+  white-space:nowrap!important;
+}
+.adminLogsButton{
+  background:#1a3040!important;
+  color:#8de0b1!important;
+  border:1px solid rgba(92,229,154,.32)!important;
+}
+.adminUserMeta .adminUserAction:last-child{
+  min-width:118px!important;
+}
+.userEditModal input{
+  width:100%;
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,.14);
+  background:#0b121a;
+  color:#fff;
+  padding:11px;
+  font-size:16px;
+}
+.pointsAdjustInfo{
+  margin:-2px 0 8px;
+  color:#aebdcb;
+  font-size:14px;
+}
+.pointsAdjustInfo b{color:#62dfa0}
+.userEditModal small{
+  display:block;
+  margin-top:8px;
+  font-size:12px;
+}
+@media(max-width:700px){
+  .adminUserMeta{
+    gap:8px!important;
+  }
+  .adminUserAction,
+  .adminLogsButton{
+    min-height:40px!important;
+    height:40px!important;
+    padding:0 12px!important;
+    border-radius:11px!important;
+    font-size:14px!important;
+  }
+  .adminUserMeta .adminUserAction:last-child{
+    min-width:96px!important;
+  }
+}
