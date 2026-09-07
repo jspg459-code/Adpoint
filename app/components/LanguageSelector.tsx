@@ -212,7 +212,19 @@ export default function LanguageSelector() {
   }, [lang]);
 
   return (
-    <div className="languageWidget" data-no-translate>
+    <div
+      className="languageWidget"
+      data-no-translate
+      style={{
+        position: "fixed",
+        top: "calc(env(safe-area-inset-top, 0px) + 8px)",
+        right: "12px",
+        left: "auto",
+        bottom: "auto",
+        zIndex: 2147483647,
+        transform: "none"
+      }}
+    >
       <button className="languageButton" onClick={() => setOpen(v => !v)} aria-label="Choose language">
         <span>{languages[lang].flag}</span>
         <span className="languageCode">{lang.toUpperCase()}</span>
