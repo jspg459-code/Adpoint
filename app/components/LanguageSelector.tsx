@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 type Lang = "fr" | "en" | "es" | "de" | "it" | "pt" | "nl" | "ar";
 
@@ -140,6 +141,15 @@ function detectLanguage():Lang {
 export default function LanguageSelector() {
   const [lang, setLang] = useState<Lang>("fr");
   const [open, setOpen] = useState(false);
+  const [host, setHost] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const findHost = () => setHost(document.querySelector<HTMLElement>(".cleanTopHeader, .modernHeader, nav"));
+    findHost();
+    const observer = new MutationObserver(findHost);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const saved = localStorage.getItem("adpoints-language") as Lang | null;
@@ -211,18 +221,18 @@ export default function LanguageSelector() {
     return () => observer.disconnect();
   }, [lang]);
 
-  return (
+  const widget = (
     <div
       className="languageWidget"
       data-no-translate
       style={{
-        position: "fixed",
-        top: "calc(env(safe-area-inset-top, 0px) + 8px)",
-        right: "12px",
+        position: "absolute",
+        top: "50%",
+        right: "18px",
         left: "auto",
         bottom: "auto",
-        zIndex: 3,
-        transform: "none"
+        zIndex: 20,
+        transform: "translateY(-50%)"
       }}
     >
       <button className="languageButton" onClick={() => setOpen(v => !v)} aria-label="Choose language">
@@ -244,4 +254,6 @@ export default function LanguageSelector() {
       )}
     </div>
   );
+
+  return host ? createPortal(widget, host) : widget;
 }
