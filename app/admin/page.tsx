@@ -182,26 +182,30 @@ export default function AdminPage() {
     setBusyId(usernameDialogUser.id);
     setMessage("");
 
-    const { error } = await supabase
-      .from("profiles")
-      .update({ username })
-      .eq("id", usernameDialogUser.id);
+    const { data, error } = await supabase
+      .rpc("admin_update_username", {
+        target_user_id: usernameDialogUser.id,
+        new_username: username
+      })
+      .single();
 
     setBusyId(null);
 
     if (error) {
-      setMessage(error.message);
+      setMessage(error.message || "Impossible de modifier le pseudo.");
       return;
     }
+
+    const savedUsername = data?.username || username;
 
     await logAudit("admin_update_username", {
       target_user_id: usernameDialogUser.id,
       previous_username: usernameDialogUser.username || null,
-      username
+      username: savedUsername
     }, "/admin");
 
     setUsers(list => list.map(u =>
-      u.id === usernameDialogUser.id ? { ...u, username } : u
+      u.id === usernameDialogUser.id ? { ...u, username: savedUsername } : u
     ));
     setMessage("Pseudo modifié avec succès.");
     closeUsernameDialog();
