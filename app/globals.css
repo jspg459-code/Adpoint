@@ -1025,3 +1025,116 @@ body > .languageWidget{
 .modernHeader .languageChevron{
   display:none!important;
 }
+
+
+/* === HOME HEADER: dedicated layout for BETA / signup / language ===
+   The home page reserves three independent zones so nothing overlaps:
+   brand on the left, "Créer mon compte" centered, language on the right.
+   BÊTA TEST stays alone on its own row above the centered action. */
+.homeModern .modernHeader{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;
+  align-items:center!important;
+  column-gap:18px!important;
+  min-height:132px!important;
+  height:132px!important;
+  padding:56px 5% 14px!important;
+  position:sticky!important;
+  top:0!important;
+  z-index:1000!important;
+}
+.homeModern .modernHeader .modernBrand{
+  grid-column:1!important;
+  grid-row:1!important;
+  justify-self:start!important;
+  min-width:0!important;
+}
+.homeModern .modernHeader .modernNav{
+  grid-column:2!important;
+  grid-row:1!important;
+  justify-self:center!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+}
+.homeModern .modernHeader .modernNav .navPill{
+  display:none!important;
+}
+.homeModern .modernHeader .modernNav .homePrimary{
+  min-width:250px!important;
+  min-height:58px!important;
+  padding:0 30px!important;
+  white-space:nowrap!important;
+}
+.homeModern .modernHeader .betaHeaderBadge{
+  position:absolute!important;
+  top:9px!important;
+  left:50%!important;
+  transform:translateX(-50%)!important;
+  z-index:1500!important;
+}
+.homeModern .modernHeader .languageWidget{
+  position:absolute!important;
+  top:50%!important;
+  right:16px!important;
+  left:auto!important;
+  transform:translateY(-10%)!important;
+  z-index:1600!important;
+}
+.homeModern .modernHeader .languageMenu{
+  top:calc(100% + 8px)!important;
+  right:0!important;
+}
+@media(max-width:760px){
+  .homeModern .modernHeader{
+    min-height:126px!important;
+    height:126px!important;
+    grid-template-columns:minmax(110px,1fr) auto minmax(62px,1fr)!important;
+    column-gap:8px!important;
+    padding:52px 16px 12px!important;
+  }
+  .homeModern .modernHeader .modernBrand{
+    gap:10px!important;
+  }
+  .homeModern .modernHeader .modernBrand b,
+  .homeModern .modernHeader .modernBrand strong{
+    font-size:24px!important;
+  }
+  .homeModern .modernHeader .modernCoin{
+    width:42px!important;
+    height:42px!important;
+  }
+  .homeModern .modernHeader .modernCoin i{
+    width:27px!important;
+    height:27px!important;
+  }
+  .homeModern .modernHeader .modernNav .homePrimary{
+    min-width:0!important;
+    min-height:52px!important;
+    padding:0 20px!important;
+    font-size:15px!important;
+  }
+  .homeModern .modernHeader .languageWidget{
+    top:50%!important;
+    right:10px!important;
+    transform:translateY(-10%)!important;
+  }
+}
+@media(max-width:480px){
+  .homeModern .modernHeader{
+    grid-template-columns:auto minmax(0,1fr) 54px!important;
+    padding-left:12px!important;
+    padding-right:12px!important;
+  }
+  .homeModern .modernHeader .modernBrand>span:last-child{
+    display:none!important;
+  }
+  .homeModern .modernHeader .modernNav{
+    width:100%!important;
+  }
+  .homeModern .modernHeader .modernNav .homePrimary{
+    width:100%!important;
+    padding:0 10px!important;
+    font-size:13px!important;
+  }
+}
