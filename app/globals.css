@@ -591,3 +591,29 @@ html[dir="rtl"] body{direction:rtl}
 @media(max-width:480px){
   .fireTruckBeta{left:4px;transform:scale(.86);transform-origin:top left}
 }
+
+
+/* Clean BETA TEST badge */
+.betaSiteBadge{
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%);
+  top:16px;
+  z-index:10;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:7px 18px;
+  border-radius:999px;
+  border:1px solid rgba(255,190,70,.42);
+  background:rgba(255,190,70,.10);
+  color:#ffd27a;
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:.18em;
+  white-space:nowrap;
+  box-shadow:0 0 18px rgba(255,190,70,.08);
+}
+@media(max-width:760px){
+  .betaSiteBadge{top:10px;font-size:10px;padding:6px 14px}
+}
