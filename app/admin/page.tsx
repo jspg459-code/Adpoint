@@ -45,8 +45,9 @@ export default function AdminPage() {
   const [banUnit, setBanUnit] = useState<"minutes" | "hours" | "days">("hours");
   const [banReason, setBanReason] = useState("");
 
-  const [editDialogUser, setEditDialogUser] = useState<Profile | null>(null);
+  const [usernameDialogUser, setUsernameDialogUser] = useState<Profile | null>(null);
   const [editUsername, setEditUsername] = useState("");
+  const [pointsDialogUser, setPointsDialogUser] = useState<Profile | null>(null);
   const [pointsDelta, setPointsDelta] = useState("");
 
   useEffect(() => { load(); }, []);
@@ -158,42 +159,33 @@ export default function AdminPage() {
     return true;
   }
 
-  function openEditDialog(profile: Profile) {
-    setEditDialogUser(profile);
+  function openUsernameDialog(profile: Profile) {
+    setUsernameDialogUser(profile);
     setEditUsername(profile.username || "");
-    setPointsDelta("");
     setMessage("");
   }
 
-  function closeEditDialog() {
-    setEditDialogUser(null);
+  function closeUsernameDialog() {
+    setUsernameDialogUser(null);
     setEditUsername("");
-    setPointsDelta("");
   }
 
-  async function saveUserChanges() {
-    if (!editDialogUser) return;
-
+  async function saveUsername() {
+    if (!usernameDialogUser) return;
     const username = editUsername.trim();
-    const delta = pointsDelta.trim() === "" ? 0 : Number(pointsDelta);
 
     if (!username) {
       setMessage("Le pseudo ne peut pas être vide.");
       return;
     }
-    if (!Number.isFinite(delta)) {
-      setMessage("Indique un nombre valide pour les AdPoints.");
-      return;
-    }
 
-    const nextPoints = Math.max(0, (editDialogUser.points_balance || 0) + delta);
-    setBusyId(editDialogUser.id);
+    setBusyId(usernameDialogUser.id);
     setMessage("");
 
     const { error } = await supabase
       .from("profiles")
-      .update({ username, points_balance: nextPoints })
-      .eq("id", editDialogUser.id);
+      .update({ username })
+      .eq("id", usernameDialogUser.id);
 
     setBusyId(null);
 
@@ -202,30 +194,67 @@ export default function AdminPage() {
       return;
     }
 
-    if (username !== (editDialogUser.username || "")) {
-      await logAudit("admin_update_username", {
-        target_user_id: editDialogUser.id,
-        previous_username: editDialogUser.username || null,
-        username
-      }, "/admin");
-    }
-
-    if (delta !== 0) {
-      await logAudit("admin_adjust_points", {
-        target_user_id: editDialogUser.id,
-        delta,
-        previous_points: editDialogUser.points_balance || 0,
-        points_balance: nextPoints
-      }, "/admin");
-    }
+    await logAudit("admin_update_username", {
+      target_user_id: usernameDialogUser.id,
+      previous_username: usernameDialogUser.username || null,
+      username
+    }, "/admin");
 
     setUsers(list => list.map(u =>
-      u.id === editDialogUser.id
-        ? { ...u, username, points_balance: nextPoints }
-        : u
+      u.id === usernameDialogUser.id ? { ...u, username } : u
     ));
-    setMessage("Utilisateur modifié avec succès.");
-    closeEditDialog();
+    setMessage("Pseudo modifié avec succès.");
+    closeUsernameDialog();
+  }
+
+  function openPointsDialog(profile: Profile) {
+    setPointsDialogUser(profile);
+    setPointsDelta("");
+    setMessage("");
+  }
+
+  function closePointsDialog() {
+    setPointsDialogUser(null);
+    setPointsDelta("");
+  }
+
+  async function savePoints() {
+    if (!pointsDialogUser) return;
+    const delta = Number(pointsDelta.trim());
+
+    if (!Number.isFinite(delta) || delta === 0) {
+      setMessage("Indique un nombre différent de 0 pour modifier les AdPoints.");
+      return;
+    }
+
+    const nextPoints = Math.max(0, (pointsDialogUser.points_balance || 0) + delta);
+    setBusyId(pointsDialogUser.id);
+    setMessage("");
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ points_balance: nextPoints })
+      .eq("id", pointsDialogUser.id);
+
+    setBusyId(null);
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    await logAudit("admin_adjust_points", {
+      target_user_id: pointsDialogUser.id,
+      delta,
+      previous_points: pointsDialogUser.points_balance || 0,
+      points_balance: nextPoints
+    }, "/admin");
+
+    setUsers(list => list.map(u =>
+      u.id === pointsDialogUser.id ? { ...u, points_balance: nextPoints } : u
+    ));
+    setMessage(delta > 0 ? "AdPoints ajoutés avec succès." : "AdPoints retirés avec succès.");
+    closePointsDialog();
   }
 
   function openBanDialog(profile: Profile) {
@@ -388,11 +417,19 @@ export default function AdminPage() {
                   </Link>
 
                   <button
-                    className="adminUserAction"
+                    className="adminUserAction adminCompactAction"
                     disabled={busy}
-                    onClick={() => openEditDialog(user)}
+                    onClick={() => openUsernameDialog(user)}
                   >
-                    Modifier
+                    Pseudo
+                  </button>
+
+                  <button
+                    className="adminUserAction adminCompactAction"
+                    disabled={busy}
+                    onClick={() => openPointsDialog(user)}
+                  >
+                    Points
                   </button>
 
                   {activeBan ? (
@@ -439,43 +476,61 @@ export default function AdminPage() {
       </section>
 
 
-      {editDialogUser && (
-        <div className="adminModalBackdrop" onClick={closeEditDialog}>
+      {usernameDialogUser && (
+        <div className="adminModalBackdrop" onClick={closeUsernameDialog}>
           <div className="adminModal userEditModal" onClick={(e) => e.stopPropagation()}>
-            <h2>Modifier {editDialogUser.username || editDialogUser.email}</h2>
-            <p className="muted">Modifie le pseudo et ajoute ou retire des AdPoints.</p>
+            <h2>Modifier le pseudo</h2>
+            <p className="muted">Modifie uniquement le pseudo de {usernameDialogUser.username || usernameDialogUser.email}.</p>
 
-            <label>Pseudo</label>
+            <label>Nouveau pseudo</label>
             <input
               value={editUsername}
               onChange={(e) => setEditUsername(e.target.value)}
               placeholder="Pseudo de l'utilisateur"
               maxLength={40}
+              autoFocus
             />
-
-            <label>AdPoints</label>
-            <div className="pointsAdjustInfo">
-              Solde actuel : <b>{editDialogUser.points_balance || 0} AdPoints</b>
-            </div>
-            <input
-              type="number"
-              step="1"
-              value={pointsDelta}
-              onChange={(e) => setPointsDelta(e.target.value)}
-              placeholder="Ex. 50 pour ajouter, -50 pour retirer"
-            />
-            <small className="muted">Nombre positif = ajouter • Nombre négatif = retirer</small>
 
             <div className="adminModalActions">
-              <button onClick={closeEditDialog}>Annuler</button>
-              <button className="adminUserAction" disabled={busyId === editDialogUser.id} onClick={saveUserChanges}>
-                {busyId === editDialogUser.id ? "..." : "Enregistrer"}
+              <button onClick={closeUsernameDialog}>Annuler</button>
+              <button className="adminUserAction" disabled={busyId === usernameDialogUser.id} onClick={saveUsername}>
+                {busyId === usernameDialogUser.id ? "..." : "Enregistrer le pseudo"}
               </button>
             </div>
           </div>
         </div>
       )}
 
+      {pointsDialogUser && (
+        <div className="adminModalBackdrop" onClick={closePointsDialog}>
+          <div className="adminModal userEditModal" onClick={(e) => e.stopPropagation()}>
+            <h2>Modifier les AdPoints</h2>
+            <p className="muted">Ajoute ou retire des AdPoints sans modifier le pseudo.</p>
+
+            <div className="pointsAdjustInfo">
+              Solde actuel : <b>{pointsDialogUser.points_balance || 0} AdPoints</b>
+            </div>
+
+            <label>Variation des AdPoints</label>
+            <input
+              type="number"
+              step="1"
+              value={pointsDelta}
+              onChange={(e) => setPointsDelta(e.target.value)}
+              placeholder="Ex. 50 ou -50"
+              autoFocus
+            />
+            <small className="muted">Nombre positif = ajouter • Nombre négatif = retirer</small>
+
+            <div className="adminModalActions">
+              <button onClick={closePointsDialog}>Annuler</button>
+              <button className="adminUserAction" disabled={busyId === pointsDialogUser.id} onClick={savePoints}>
+                {busyId === pointsDialogUser.id ? "..." : "Valider les points"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {banDialogUser && (
         <div className="adminModalBackdrop" onClick={closeBanDialog}>
