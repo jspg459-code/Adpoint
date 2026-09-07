@@ -178,22 +178,27 @@ export default function AdminPage() {
       setMessage("Le pseudo ne peut pas être vide.");
       return;
     }
+    if (username.length < 3 || username.length > 40) {
+      setMessage("Le pseudo doit contenir entre 3 et 40 caractères.");
+      return;
+    }
 
     setBusyId(usernameDialogUser.id);
     setMessage("");
 
     try {
-      const { data, error } = await supabase.functions.invoke("admin-user-management", {
-        body: {
-          action: "update_username",
-          userId: usernameDialogUser.id,
-          username
-        }
-      });
+      // Les AdPoints sont déjà modifiés directement depuis ce panel.
+      // On utilise donc la même connexion Supabase pour le pseudo afin
+      // d'éviter qu'une action Edge Function non disponible bloque le bouton.
+      const { data, error } = await supabase
+        .from("profiles")
+        .update({ username })
+        .eq("id", usernameDialogUser.id)
+        .select("username")
+        .single();
 
-      if (error || data?.error) {
-        setMessage(data?.error || error?.message || "Impossible de modifier le pseudo.");
-        return;
+      if (error) {
+        throw error;
       }
 
       const savedUsername = data?.username || username;
@@ -208,8 +213,8 @@ export default function AdminPage() {
         u.id === usernameDialogUser.id ? { ...u, username: savedUsername } : u
       ));
 
-      setMessage("Pseudo modifié avec succès.");
       closeUsernameDialog();
+      setMessage("Pseudo modifié avec succès.");
     } catch (err: any) {
       setMessage(err?.message || "Impossible de modifier le pseudo.");
     } finally {
