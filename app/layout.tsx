@@ -1,6 +1,7 @@
 import "./globals.css";
 import LanguageSelector from "./components/LanguageSelector";
 import BetaBadge from "./components/BetaBadge";
+import ActivityLogger from "./components/ActivityLogger";
 
 export const metadata = {
   title: "AdPoints",
@@ -12,6 +13,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="fr">
       <body>
         {children}
+        <ActivityLogger />
         <BetaBadge />
         <LanguageSelector />
       </body>
