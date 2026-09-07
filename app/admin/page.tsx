@@ -35,6 +35,10 @@ export default function AdminPage() {
   const [activities, setActivities] = useState<any[]>([]);
   const [message, setMessage] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [banDialogUser, setBanDialogUser] = useState<Profile | null>(null);
+  const [banDuration, setBanDuration] = useState("24");
+  const [banUnit, setBanUnit] = useState<"minutes" | "hours" | "days">("hours");
+  const [banReason, setBanReason] = useState("");
 
   useEffect(() => { load(); }, []);
 
