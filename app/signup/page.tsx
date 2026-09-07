@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
+import { logAudit } from "../lib/audit";
 
 export default function SignupPage(){
   const router=useRouter();
@@ -20,6 +21,7 @@ export default function SignupPage(){
     if(data.user&&username.trim()){
       await supabase.from("profiles").update({username:username.trim()}).eq("id",data.user.id);
     }
+    if(data.session) await logAudit("signup_success", { username: username.trim() || null }, "/signup");
     setLoading(false);
     if(data.session) router.replace("/dashboard");
     else setMessage("Compte créé ! Vérifie ton e-mail si une confirmation est demandée.");
