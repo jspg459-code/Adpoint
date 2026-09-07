@@ -766,3 +766,53 @@ body > .languageWidget{
     right:10px!important;
   }
 }
+
+
+/* === NATIVE TOP-LAYER VIEWPORT CONTROLS ===
+   Unlike ordinary position:fixed, native manual popovers are promoted by the
+   browser above the document, so transformed/scrolling app containers cannot
+   make these controls travel with the page. */
+.globalBetaBadge[popover]:popover-open,
+.languageWidget[popover]:popover-open{
+  position:fixed!important;
+  margin:0!important;
+  inset:auto!important;
+  display:flex!important;
+  visibility:visible!important;
+}
+
+.globalBetaBadge[popover]:popover-open{
+  top:calc(env(safe-area-inset-top, 0px) + 10px)!important;
+  left:50%!important;
+  right:auto!important;
+  bottom:auto!important;
+  transform:translateX(-50%)!important;
+  -webkit-transform:translateX(-50%)!important;
+  pointer-events:none!important;
+}
+
+.languageWidget[popover]:popover-open{
+  top:calc(env(safe-area-inset-top, 0px) + 10px)!important;
+  right:12px!important;
+  left:auto!important;
+  bottom:auto!important;
+  transform:none!important;
+  -webkit-transform:none!important;
+  pointer-events:auto!important;
+}
+
+.globalBetaBadge[popover]::backdrop,
+.languageWidget[popover]::backdrop{
+  background:transparent!important;
+  pointer-events:none!important;
+}
+
+@media(max-width:760px){
+  .globalBetaBadge[popover]:popover-open{
+    top:calc(env(safe-area-inset-top, 0px) + 8px)!important;
+  }
+  .languageWidget[popover]:popover-open{
+    top:calc(env(safe-area-inset-top, 0px) + 8px)!important;
+    right:10px!important;
+  }
+}
