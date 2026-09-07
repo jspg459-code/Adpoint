@@ -73,9 +73,9 @@ export default function AdminPage() {
     setLoading(false);
   }
 
-  async function manageUser(profile: Profile, action: "ban" | "unban" | "delete", durationSeconds?: number, banReason?: string) {
+  async function manageUser(profile: Profile, action: "ban" | "unban" | "delete", durationSeconds?: number, banReason?: string, permanent = false) {
     if (action === "delete" && !window.confirm(`Supprimer définitivement ${profile.email} ? Cette action supprimera aussi son compte Supabase et ses données associées.`)) return;
-    if (action === "ban" && !durationSeconds) return;
+    if (action === "ban" && !durationSeconds && !permanent) return;
 
     setBusyId(profile.id);
     setMessage("");
@@ -114,7 +114,7 @@ export default function AdminPage() {
   }
 
 
-  async function banUser(profile: Profile, durationSeconds: number) {
+  async function banUser(profile: Profile, durationSeconds?: number, permanent = false) {
     const reason = window.prompt(`Motif du bannissement de ${profile.username || profile.email} :`, "");
     if (reason === null) return;
 
@@ -124,7 +124,7 @@ export default function AdminPage() {
       return;
     }
 
-    await manageUser(profile, "ban", durationSeconds, cleanReason);
+    await manageUser(profile, "ban", durationSeconds, cleanReason, permanent);
   }
 
   async function customBan(profile: Profile) {
@@ -212,7 +212,7 @@ export default function AdminPage() {
                   <span>{user.email}</span>
                   {activeBan && <>
                     <span className="muted">⛔ Motif : {user.ban_reason || "Non précisé"}</span>
-                    <span className="muted">⏳ Bannissement restant : {remainingTime(user.ban_until!)}</span>
+                    <span className="muted">⏳ {user.ban_until ? `Bannissement restant : ${remainingTime(user.ban_until)}` : "Bannissement définitif"}</span>
                   </>}
                 </div>
 
