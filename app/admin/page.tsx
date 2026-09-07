@@ -16,6 +16,8 @@ type Profile = {
   created_at: string;
 };
 
+type BanChoice = "1h" | "24h" | "7d" | "30d" | "custom" | "permanent";
+
 function remainingTime(date: string) {
   const ms = new Date(date).getTime() - Date.now();
   if (ms <= 0) return "Expiré";
@@ -35,7 +37,9 @@ export default function AdminPage() {
   const [activities, setActivities] = useState<any[]>([]);
   const [message, setMessage] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+
   const [banDialogUser, setBanDialogUser] = useState<Profile | null>(null);
+  const [banChoice, setBanChoice] = useState<BanChoice>("24h");
   const [banDuration, setBanDuration] = useState("24");
   const [banUnit, setBanUnit] = useState<"minutes" | "hours" | "days">("hours");
   const [banReason, setBanReason] = useState("");
@@ -44,6 +48,7 @@ export default function AdminPage() {
 
   async function load() {
     setLoading(true);
+
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user || user.email?.toLowerCase() !== "jspg459@gmail.com") {
@@ -64,7 +69,10 @@ export default function AdminPage() {
 
     const [{ data: profiles, error: profilesError }, { data: acts, error: activitiesError }] =
       await Promise.all([
-        supabase.from("profiles").select("id,email,username,points_balance,is_suspended,ban_until,ban_reason,created_at").order("created_at", { ascending: false }),
+        supabase
+          .from("profiles")
+          .select("id,email,username,points_balance,is_suspended,ban_until,ban_reason,created_at")
+          .order("created_at", { ascending: false }),
         supabase.from("activities").select("*").order("created_at", { ascending: false })
       ]);
 
@@ -77,10 +85,12 @@ export default function AdminPage() {
     setLoading(false);
   }
 
-  async function manageUser(profile: Profile, action: "ban" | "unban" | "delete", durationSeconds?: number, banReason?: string, permanent = false) {
-    if (action === "delete" && !window.confirm(`Supprimer définitivement ${profile.email} ? Cette action supprimera aussi son compte Supabase et ses données associées.`)) return;
-    if (action === "ban" && !durationSeconds && !permanent) return;
-
+  async function manageUser(
+    profile: Profile,
+    action: "ban" | "unban" | "delete",
+    durationSeconds?: number,
+    reason?: string
+  ) {
     setBusyId(profile.id);
     setMessage("");
 
@@ -89,7 +99,7 @@ export default function AdminPage() {
         action,
         userId: profile.id,
         durationSeconds,
-        reason: action === "ban" ? (banReason || "Bannissement décidé par l’administrateur.") : undefined
+        reason: action === "ban" ? (reason || "Bannissement décidé par l’administrateur.") : undefined
       }
     });
 
@@ -97,89 +107,97 @@ export default function AdminPage() {
 
     if (error || data?.error) {
       setMessage(data?.error || error?.message || "Une erreur est survenue.");
-      return;
+      return false;
     }
 
     if (action === "delete") {
       setUsers(list => list.filter(u => u.id !== profile.id));
-      setMessage("Utilisateur supprimé définitivement du site et de Supabase.");
-      return;
+      setMessage("Compte supprimé définitivement du site et de Supabase.");
+      return true;
     }
 
     if (action === "unban") {
-      setUsers(list => list.map(u => u.id === profile.id ? { ...u, is_suspended: false, ban_until: null, ban_reason: null } : u));
+      setUsers(list =>
+        list.map(u =>
+          u.id === profile.id
+            ? { ...u, is_suspended: false, ban_until: null, ban_reason: null }
+            : u
+        )
+      );
       setMessage("Utilisateur débanni avec succès.");
-      return;
+      return true;
     }
 
     const banUntil = data?.ban_until;
-    setUsers(list => list.map(u => u.id === profile.id ? { ...u, is_suspended: true, ban_until: banUntil, ban_reason: banReason || "Bannissement décidé par l’administrateur." } : u));
+    setUsers(list =>
+      list.map(u =>
+        u.id === profile.id
+          ? {
+              ...u,
+              is_suspended: true,
+              ban_until: banUntil,
+              ban_reason: reason || "Bannissement décidé par l’administrateur."
+            }
+          : u
+      )
+    );
     setMessage("Utilisateur banni avec succès.");
+    return true;
   }
 
+  function openBanDialog(profile: Profile) {
+    setBanDialogUser(profile);
+    setBanChoice("24h");
+    setBanDuration("24");
+    setBanUnit("hours");
+    setBanReason("");
+    setMessage("");
+  }
 
-  async function banUser(profile: Profile, durationSeconds?: number, permanent = false) {
-    const reason = window.prompt(`Motif du bannissement de ${profile.username || profile.email} :`, "");
-    if (reason === null) return;
+  function closeBanDialog() {
+    setBanDialogUser(null);
+    setBanReason("");
+  }
 
-    const cleanReason = reason.trim();
-    if (!cleanReason) {
-      setMessage("Tu dois indiquer une raison avant de bannir cet utilisateur.");
-      return;
-    }
+  function getDurationSeconds() {
+    if (banChoice === "1h") return 3600;
+    if (banChoice === "24h") return 86400;
+    if (banChoice === "7d") return 604800;
+    if (banChoice === "30d") return 2592000;
 
-    await manageUser(profile, "ban", durationSeconds, cleanReason, permanent);
+    const amount = Number(banDuration);
+    if (!Number.isFinite(amount) || amount <= 0) return null;
+
+    if (banUnit === "minutes") return Math.round(amount * 60);
+    if (banUnit === "hours") return Math.round(amount * 3600);
+    return Math.round(amount * 86400);
   }
 
   async function submitBan() {
     if (!banDialogUser) return;
+
     const cleanReason = banReason.trim();
     if (!cleanReason) {
       setMessage("Tu dois indiquer une raison avant de bannir cet utilisateur.");
       return;
     }
-    const amount = Number(banDuration);
-    if (!Number.isFinite(amount) || amount <= 0) {
+
+    if (banChoice === "permanent") {
+      if (!window.confirm(`⚠️ BAN DÉFINITIF : supprimer définitivement le compte de ${banDialogUser.username || banDialogUser.email} ? Cette action est irréversible.`)) return;
+
+      const success = await manageUser(banDialogUser, "delete");
+      if (success) closeBanDialog();
+      return;
+    }
+
+    const seconds = getDurationSeconds();
+    if (!seconds) {
       setMessage("Indique une durée valide.");
       return;
     }
-    const seconds = banUnit === "minutes" ? amount * 60 : banUnit === "hours" ? amount * 3600 : amount * 86400;
-    await manageUser(banDialogUser, "ban", Math.round(seconds), cleanReason);
-    setBanDialogUser(null);
-    setBanReason("");
-    setBanDuration("24");
-    setBanUnit("hours");
-  }
 
-  async function permanentBanFromDialog() {
-    if (!banDialogUser) return;
-    const cleanReason = banReason.trim();
-    if (!cleanReason) {
-      setMessage("Tu dois indiquer une raison avant de supprimer définitivement le compte.");
-      return;
-    }
-    if (!window.confirm(`⚠️ Supprimer définitivement le compte de ${banDialogUser.username || banDialogUser.email} ? Cette action est irréversible.`)) return;
-    await manageUser(banDialogUser, "delete");
-    setBanDialogUser(null);
-    setBanReason("");
-  }
-
-  async function customBan(profile: Profile) {
-    const value = window.prompt("Durée du bannissement en heures :", "24");
-    if (!value) return;
-    const hours = Number(value.replace(",", "."));
-    if (!Number.isFinite(hours) || hours <= 0 || hours > 8760) {
-      setMessage("Entre une durée comprise entre 1 heure et 8760 heures.");
-      return;
-    }
-    const reason = window.prompt(`Motif du bannissement de ${profile.username || profile.email} :`, "");
-    if (reason === null) return;
-    const cleanReason = reason.trim();
-    if (!cleanReason) {
-      setMessage("Tu dois indiquer une raison avant de bannir cet utilisateur.");
-      return;
-    }
-    await manageUser(profile, "ban", Math.round(hours * 3600), cleanReason);
+    const success = await manageUser(banDialogUser, "ban", seconds, cleanReason);
+    if (success) closeBanDialog();
   }
 
   async function toggleActivity(activity: any) {
@@ -193,12 +211,12 @@ export default function AdminPage() {
       return;
     }
 
-    setActivities(list => list.map(a =>
-      a.id === activity.id ? { ...a, is_active: !a.is_active } : a
-    ));
+    setActivities(list =>
+      list.map(a => a.id === activity.id ? { ...a, is_active: !a.is_active } : a)
+    );
   }
 
-  const isBanned = (u: Profile) => !!u.ban_until && new Date(u.ban_until).getTime() > Date.now();
+  const isBanned = (u: Profile) => !!u.is_suspended && (!u.ban_until || new Date(u.ban_until).getTime() > Date.now());
   const banned = users.filter(isBanned).length;
   const totalPoints = users.reduce((sum, u) => sum + (u.points_balance || 0), 0);
 
@@ -234,7 +252,10 @@ export default function AdminPage() {
 
       <section className="adminSection">
         <div className="adminSectionHead">
-          <div><h2>Utilisateurs</h2><p>Bannis temporairement, débannis ou supprime définitivement un compte.</p></div>
+          <div>
+            <h2>Utilisateurs</h2>
+            <p>Un seul bouton pour gérer le bannissement, avec durée personnalisée, BAN DÉF et débannissement.</p>
+          </div>
           <button className="adminRefresh" onClick={load}>Actualiser</button>
         </div>
 
@@ -242,15 +263,21 @@ export default function AdminPage() {
           {users.map(user => {
             const activeBan = isBanned(user);
             const busy = busyId === user.id;
+
             return (
               <article className="adminUser" key={user.id}>
                 <div>
                   <strong>{user.username || "Sans pseudo"}</strong>
                   <span>{user.email}</span>
-                  {activeBan && <>
-                    <span className="muted">⛔ Motif : {user.ban_reason || "Non précisé"}</span>
-                    <span className="muted">⏳ {user.ban_until ? `Bannissement restant : ${remainingTime(user.ban_until)}` : "Bannissement définitif"}</span>
-                  </>}
+
+                  {activeBan && (
+                    <>
+                      <span className="muted">⛔ Motif : {user.ban_reason || "Non précisé"}</span>
+                      <span className="muted">
+                        ⏳ {user.ban_until ? `Bannissement restant : ${remainingTime(user.ban_until)}` : "Bannissement définitif"}
+                      </span>
+                    </>
+                  )}
                 </div>
 
                 <div className="adminUserMeta">
@@ -260,20 +287,14 @@ export default function AdminPage() {
                   </span>
 
                   {activeBan ? (
-                    <button disabled={busy} onClick={() => manageUser(user, "unban")}>Débannir</button>
+                    <button disabled={busy} onClick={() => manageUser(user, "unban")}>
+                      {busy ? "..." : "Débannir"}
+                    </button>
                   ) : (
-                    <>
-                      <button disabled={busy} onClick={() => banUser(user, 3600)}>Bannir 1h</button>
-                      <button disabled={busy} onClick={() => banUser(user, 86400)}>24h</button>
-                      <button disabled={busy} onClick={() => banUser(user, 604800)}>7j</button>
-                      <button disabled={busy} onClick={() => banUser(user, 2592000)}>30j</button>
-                      <button disabled={busy} onClick={() => customBan(user)}>Durée perso</button>
-                    </>
+                    <button disabled={busy} onClick={() => openBanDialog(user)}>
+                      {busy ? "..." : "Bannir"}
+                    </button>
                   )}
-
-                  <button disabled={busy} onClick={() => manageUser(user, "delete")} style={{ borderColor: "#ef6b6b" }}>
-                    Supprimer
-                  </button>
                 </div>
               </article>
             );
@@ -293,6 +314,7 @@ export default function AdminPage() {
                 <strong>{activity.title}</strong>
                 <span>{activity.description || "Aucune description"}</span>
               </div>
+
               <div className="adminUserMeta">
                 <b>+{activity.points_reward} AdPoints</b>
                 <span className={activity.is_active ? "status activeStatus" : "status suspended"}>
@@ -306,31 +328,64 @@ export default function AdminPage() {
           ))}
         </div>
       </section>
+
       {banDialogUser && (
-        <div className="adminModalBackdrop" onClick={() => setBanDialogUser(null)}>
+        <div className="adminModalBackdrop" onClick={closeBanDialog}>
           <div className="adminModal" onClick={(e) => e.stopPropagation()}>
-            <h2>🚫 Bannir {banDialogUser.username || banDialogUser.email}</h2>
-            <p className="muted">Choisis la durée et indique la raison du bannissement.</p>
-            <label>Durée</label>
-            <div className="banDurationRow">
-              <input type="number" min="1" value={banDuration} onChange={(e) => setBanDuration(e.target.value)} />
-              <select value={banUnit} onChange={(e) => setBanUnit(e.target.value as "minutes" | "hours" | "days")}>
-                <option value="minutes">Minutes</option>
-                <option value="hours">Heures</option>
-                <option value="days">Jours</option>
-              </select>
-            </div>
-            <label>Raison du ban</label>
-            <textarea value={banReason} onChange={(e) => setBanReason(e.target.value)} placeholder="Indique la raison du bannissement..." />
+            <h2>🚫 Gérer {banDialogUser.username || banDialogUser.email}</h2>
+            <p className="muted">Choisis une durée dans la liste, ou sélectionne BAN DÉF.</p>
+
+            <label>Durée du bannissement</label>
+            <select
+              value={banChoice}
+              onChange={(e) => setBanChoice(e.target.value as BanChoice)}
+            >
+              <option value="1h">1 heure</option>
+              <option value="24h">24 heures</option>
+              <option value="7d">7 jours</option>
+              <option value="30d">30 jours</option>
+              <option value="custom">Durée personnalisée</option>
+              <option value="permanent">BAN DÉF — suppression définitive du compte</option>
+            </select>
+
+            {banChoice === "custom" && (
+              <div className="banDurationRow">
+                <input
+                  type="number"
+                  min="1"
+                  value={banDuration}
+                  onChange={(e) => setBanDuration(e.target.value)}
+                />
+                <select
+                  value={banUnit}
+                  onChange={(e) => setBanUnit(e.target.value as "minutes" | "hours" | "days")}
+                >
+                  <option value="minutes">Minutes</option>
+                  <option value="hours">Heures</option>
+                  <option value="days">Jours</option>
+                </select>
+              </div>
+            )}
+
+            <label>Raison</label>
+            <textarea
+              value={banReason}
+              onChange={(e) => setBanReason(e.target.value)}
+              placeholder={banChoice === "permanent" ? "Indique la raison de la suppression définitive..." : "Indique la raison du bannissement..."}
+            />
+
             <div className="adminModalActions">
-              <button onClick={() => setBanDialogUser(null)}>Annuler</button>
-              <button className="danger" onClick={submitBan}>Bannir</button>
+              <button onClick={closeBanDialog}>Annuler</button>
+              <button
+                className={banChoice === "permanent" ? "permanentBanButton" : "danger"}
+                onClick={submitBan}
+              >
+                {banChoice === "permanent" ? "BAN DÉF" : "Bannir"}
+              </button>
             </div>
-            <button className="permanentBanButton" onClick={permanentBanFromDialog}>BAN DÉF — Supprimer définitivement le compte</button>
           </div>
         </div>
       )}
-
     </main>
   );
 }
