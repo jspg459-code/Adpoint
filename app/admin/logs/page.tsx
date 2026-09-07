@@ -42,8 +42,10 @@ export default function AdminLogsPage() {
     setLoading(true);
     setMessage("");
 
+    const selectedId = new URLSearchParams(window.location.search).get("user") || "";
+
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user || user.email?.toLowerCase() !== "jspg459@gmail.com") {
+    if (!user) {
       router.replace("/dashboard");
       return;
     }
@@ -54,8 +56,18 @@ export default function AdminLogsPage() {
       .eq("id", user.id)
       .single();
 
-    if (me?.role !== "creator") {
+    const isCreator = me?.role === "creator";
+    const isAdmin = me?.role === "admin";
+
+    if (!isCreator && !isAdmin) {
       router.replace("/dashboard");
+      return;
+    }
+
+    // Un admin peut consulter uniquement les logs individuels accessibles depuis
+    // la fiche d'un utilisateur. Les logs globaux restent réservés au Créateur.
+    if (isAdmin && !selectedId) {
+      router.replace("/admin");
       return;
     }
 
@@ -86,7 +98,8 @@ export default function AdminLogsPage() {
   }
 
   useEffect(() => {
-    setSelectedUserId(new URLSearchParams(window.location.search).get("user") || "");
+    const selectedId = new URLSearchParams(window.location.search).get("user") || "";
+    setSelectedUserId(selectedId);
     load();
   }, []);
 
