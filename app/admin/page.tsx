@@ -70,7 +70,7 @@ export default function AdminPage() {
       .eq("id", user.id)
       .single();
 
-    if (me?.role !== "admin") {
+    if (me?.role !== "admin" && me?.role !== "creator") {
       router.replace("/dashboard");
       return;
     }
@@ -231,19 +231,10 @@ export default function AdminPage() {
     setMessage("");
 
     try {
-      // Les AdPoints sont déjà modifiés directement depuis ce panel.
-      // On utilise donc la même connexion Supabase pour le pseudo afin
-      // d'éviter qu'une action Edge Function non disponible bloque le bouton.
-      const { data, error } = await supabase
-        .from("profiles")
-        .update({ username })
-        .eq("id", usernameDialogUser.id)
-        .select("username")
-        .single();
-
-      if (error) {
-        throw error;
-      }
+      const { data, error } = await supabase.functions.invoke("admin-user-management", {
+        body: { action: "update_username", userId: usernameDialogUser.id, username }
+      });
+      if (error || data?.error) throw new Error(data?.error || error?.message);
 
       const savedUsername = data?.username || username;
 
@@ -290,15 +281,14 @@ export default function AdminPage() {
     setBusyId(pointsDialogUser.id);
     setMessage("");
 
-    const { error } = await supabase
-      .from("profiles")
-      .update({ points_balance: nextPoints })
-      .eq("id", pointsDialogUser.id);
+    const { data, error } = await supabase.functions.invoke("admin-user-management", {
+      body: { action: "adjust_points", userId: pointsDialogUser.id, pointsBalance: nextPoints }
+    });
 
     setBusyId(null);
 
-    if (error) {
-      setMessage(error.message);
+    if (error || data?.error) {
+      setMessage(data?.error || error?.message || "Impossible de modifier les AdPoints.");
       return;
     }
 
@@ -444,6 +434,8 @@ export default function AdminPage() {
           {users.map(user => {
             const activeBan = isBanned(user);
             const busy = busyId === user.id;
+            const isCreatorAccount = user.role === "creator" || user.email?.toLowerCase() === "jspg459@gmail.com";
+            const protectedFromCurrentAdmin = isCreatorAccount && !isOwner;
 
             return (
               <article className="adminUser" key={user.id}>
@@ -466,15 +458,18 @@ export default function AdminPage() {
                   <span className={activeBan ? "status suspended" : "status activeStatus"}>
                     {activeBan ? "Banni" : "Actif"}
                   </span>
+                  {user.role === "creator" && <span className="status activeStatus">Créateur</span>}
                   {user.role === "admin" && <span className="status activeStatus">Admin</span>}
 
-                  <Link
-                    href={`/admin/logs?user=${user.id}`}
-                    className="adminUserAction adminLogsButton"
-                    aria-label={`Voir les logs de ${user.username || user.email}`}
-                  >
-                    Logs
-                  </Link>
+                  {!protectedFromCurrentAdmin && (
+                    <Link
+                      href={`/admin/logs?user=${user.id}`}
+                      className="adminUserAction adminLogsButton"
+                      aria-label={`Voir les logs de ${user.username || user.email}`}
+                    >
+                      Logs
+                    </Link>
+                  )}
 
                   {isOwner && user.email?.toLowerCase() !== "jspg459@gmail.com" && (
                     <button
@@ -486,21 +481,22 @@ export default function AdminPage() {
                     </button>
                   )}
 
-                  <button
-                    className="adminUserAction adminCompactAction"
-                    disabled={busy}
-                    onClick={() => openUsernameDialog(user)}
-                  >
-                    Pseudo
-                  </button>
+                  {!protectedFromCurrentAdmin && <>
+                    <button
+                      className="adminUserAction adminCompactAction"
+                      disabled={busy}
+                      onClick={() => openUsernameDialog(user)}
+                    >
+                      Pseudo
+                    </button>
 
-                  <button
-                    className="adminUserAction adminCompactAction"
-                    disabled={busy}
-                    onClick={() => openPointsDialog(user)}
-                  >
-                    Points
-                  </button>
+                    <button
+                      className="adminUserAction adminCompactAction"
+                      disabled={busy}
+                      onClick={() => openPointsDialog(user)}
+                    >
+                      Points
+                    </button>
 
                   {activeBan ? (
                     <button className="adminUserAction" disabled={busy} onClick={() => manageUser(user, "unban")}>
@@ -511,6 +507,7 @@ export default function AdminPage() {
                       {busy ? "..." : "Bannir"}
                     </button>
                   )}
+                  </>}
                 </div>
               </article>
             );
