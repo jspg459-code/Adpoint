@@ -617,3 +617,17 @@ html[dir="rtl"] body{direction:rtl}
 @media(max-width:760px){
   .betaSiteBadge{top:10px;font-size:10px;padding:6px 14px}
 }
+
+
+/* Unified admin ban dialog */
+.adminModalBackdrop{position:fixed;inset:0;background:rgba(0,0,0,.68);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;padding:20px;z-index:9999}
+.adminModal{width:min(480px,100%);background:#101923;border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:24px;box-shadow:0 25px 80px rgba(0,0,0,.5)}
+.adminModal h2{margin:0 0 8px}
+.adminModal label{display:block;margin:16px 0 7px;font-weight:700}
+.banDurationRow{display:flex;gap:10px}
+.banDurationRow input,.banDurationRow select,.adminModal textarea{width:100%;border-radius:10px;border:1px solid rgba(255,255,255,.14);background:#0b121a;color:#fff;padding:11px}
+.banDurationRow input{flex:1}
+.banDurationRow select{flex:1}
+.adminModal textarea{min-height:95px;resize:vertical}
+.adminModalActions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+.permanentBanButton{width:100%;margin-top:14px;padding:11px;border-radius:10px;border:1px solid rgba(255,70,70,.5);background:rgba(170,20,25,.16);color:#ff8d8d;font-weight:900}
