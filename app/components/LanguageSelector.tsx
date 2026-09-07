@@ -221,7 +221,7 @@ export default function LanguageSelector() {
         right: "12px",
         left: "auto",
         bottom: "auto",
-        zIndex: 2147483647,
+        zIndex: 3,
         transform: "none"
       }}
     >
