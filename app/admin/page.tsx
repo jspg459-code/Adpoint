@@ -399,7 +399,6 @@ export default function AdminPage() {
           <Link href="/dashboard">Tableau de bord</Link>
           <Link href="/profile">Mon profil</Link>
           <Link href="/admin" className="active">Administration</Link>
-          <Link href="/admin/logs">Logs</Link>
         </nav>
       </header>
 
