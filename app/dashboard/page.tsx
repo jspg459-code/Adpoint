@@ -4,6 +4,7 @@ import Link from "next/link";
 import {useEffect,useState} from "react";
 import {useRouter} from "next/navigation";
 import {supabase} from "../lib/supabase";
+import { logAudit } from "../lib/audit";
 
 export default function Dashboard(){
  const router=useRouter();
@@ -44,12 +45,12 @@ export default function Dashboard(){
   if(user){
    const {error}=await supabase.from("profiles").update({username:clean}).eq("id",user.id);
    if(error) setMessage(error.message);
-   else {setProfile((p:any)=>({...p,username:clean}));setMessage("Pseudo enregistré ✓");}
+   else {setProfile((p:any)=>({...p,username:clean}));await logAudit("dashboard_username_saved",{username:clean},"/dashboard");setMessage("Pseudo enregistré ✓");}
   }
   setSaving(false);
  }
 
- async function logout(){await supabase.auth.signOut();router.replace("/");}
+ async function logout(){await logAudit("logout",{},"/dashboard");await supabase.auth.signOut();router.replace("/");}
 
  const needsUsername=!profile?.username?.trim();
 
