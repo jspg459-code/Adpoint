@@ -183,16 +183,16 @@ export default function AdminPage() {
     setMessage("");
 
     try {
-      // Même méthode que la modification des AdPoints : pas de dépendance à une RPC.
-      const { data, error } = await supabase
-        .from("profiles")
-        .update({ username })
-        .eq("id", usernameDialogUser.id)
-        .select("username")
-        .single();
+      const { data, error } = await supabase.functions.invoke("admin-user-management", {
+        body: {
+          action: "update_username",
+          userId: usernameDialogUser.id,
+          username
+        }
+      });
 
-      if (error) {
-        setMessage(error.message || "Impossible de modifier le pseudo.");
+      if (error || data?.error) {
+        setMessage(data?.error || error?.message || "Impossible de modifier le pseudo.");
         return;
       }
 
