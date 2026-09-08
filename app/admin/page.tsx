@@ -231,12 +231,13 @@ export default function AdminPage() {
     setMessage("");
 
     try {
-      const { data, error } = await supabase.functions.invoke("admin-user-management", {
-        body: { action: "update_username", userId: usernameDialogUser.id, username }
+      const { data, error } = await supabase.rpc("admin_update_username", {
+        p_user_id: usernameDialogUser.id,
+        p_username: username
       });
-      if (error || data?.error) throw new Error(data?.error || error?.message);
+      if (error) throw new Error(error.message);
 
-      const savedUsername = data?.username || username;
+      const savedUsername = typeof data === "string" && data ? data : username;
 
       await logAudit("admin_update_username", {
         target_user_id: usernameDialogUser.id,
