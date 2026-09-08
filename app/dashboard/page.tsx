@@ -16,7 +16,35 @@ export default function Dashboard(){
  const [isAdmin,setIsAdmin]=useState(false);
  const [blocked,setBlocked]=useState<{reason:string;type:"suspended"|"banned"}|null>(null);
 
- useEffect(()=>{load();},[]);
+ useEffect(()=>{
+  let channel: ReturnType<typeof supabase.channel> | null = null;
+  let mounted = true;
+
+  async function initialize(){
+   await load();
+   const {data:{user}}=await supabase.auth.getUser();
+   if(!user || !mounted) return;
+
+   channel=supabase
+    .channel("dashboard-points-"+user.id)
+    .on(
+     "postgres_changes",
+     {event:"UPDATE",schema:"public",table:"profiles",filter:"id=eq."+user.id},
+     (payload)=>{
+      if(!mounted) return;
+      setProfile((current:any)=>({...current,...(payload.new as any)}));
+     }
+    )
+    .subscribe();
+  }
+
+  void initialize();
+
+  return ()=>{
+   mounted=false;
+   if(channel) void supabase.removeChannel(channel);
+  };
+ },[]);
 
  async function load(){
   const {data:{user}}=await supabase.auth.getUser();
