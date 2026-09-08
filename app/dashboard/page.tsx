@@ -20,6 +20,18 @@ export default function Dashboard(){
   let channel: ReturnType<typeof supabase.channel> | null = null;
   let mounted = true;
 
+  const syncGlobalPoints = (event: Event) => {
+   const next = Number((event as CustomEvent<number | null>).detail);
+   if (!Number.isFinite(next)) return;
+   setProfile((current:any)=>current ? ({...current, points_balance: next}) : current);
+  };
+
+  window.addEventListener("adpoints:points-changed", syncGlobalPoints as EventListener);
+  const cachedPoints = Number((window as any).__ADPOINTS_POINTS__);
+  if (Number.isFinite(cachedPoints)) {
+   setProfile((current:any)=>current ? ({...current, points_balance: cachedPoints}) : current);
+  }
+
   async function initialize(){
    await load();
    const {data:{user}}=await supabase.auth.getUser();
@@ -42,6 +54,7 @@ export default function Dashboard(){
 
   return ()=>{
    mounted=false;
+   window.removeEventListener("adpoints:points-changed", syncGlobalPoints as EventListener);
    if(channel) void supabase.removeChannel(channel);
   };
  },[]);
@@ -70,6 +83,15 @@ export default function Dashboard(){
    ...p,
    points_balance:Number(p.points_balance ?? 0)
   };
+
+  // Le compteur global et la carte du tableau de bord doivent toujours afficher
+  // exactement la même valeur dans cette session.
+  const globalCachedPoints = typeof window !== "undefined"
+   ? Number((window as any).__ADPOINTS_POINTS__)
+   : NaN;
+  if (Number.isFinite(globalCachedPoints)) {
+   currentProfile.points_balance = globalCachedPoints;
+  }
 
   const activeBan=currentProfile?.ban_until && new Date(currentProfile.ban_until).getTime()>Date.now();
   const activeSuspension=!!currentProfile?.is_suspended && !currentProfile?.ban_until;
