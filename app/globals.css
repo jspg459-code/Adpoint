@@ -1257,12 +1257,12 @@ body > .languageWidget{
 }
 
 
-/* === Solde AdPoints global === */
+/* === Solde AdPoints global : toujours fixe en haut à droite === */
 .globalPointsBalance{
-  position:fixed;
-  z-index:9998;
-  top:210px;
-  right:22px;
+  position:fixed!important;
+  z-index:2147483647!important;
+  top:calc(env(safe-area-inset-top, 0px) + 115px)!important;
+  right:16px!important;
   display:flex;
   align-items:center;
   gap:7px;
@@ -1270,9 +1270,10 @@ body > .languageWidget{
   padding:11px 15px;
   border:1px solid rgba(86,220,150,.38);
   border-radius:16px;
-  background:rgba(16,37,48,.94);
-  box-shadow:0 10px 30px rgba(0,0,0,.22);
+  background:rgba(16,37,48,.97);
+  box-shadow:0 10px 30px rgba(0,0,0,.28);
   backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
   color:#dce7ef;
   pointer-events:none;
 }
@@ -1296,8 +1297,9 @@ body > .languageWidget{
 
 @media(max-width:760px){
   .globalPointsBalance{
-    top:322px;
-    right:12px;
+    position:fixed!important;
+    top:calc(env(safe-area-inset-top, 0px) + 115px)!important;
+    right:12px!important;
     min-width:0;
     padding:9px 12px;
     border-radius:14px;
