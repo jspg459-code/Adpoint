@@ -1309,3 +1309,28 @@ body > .languageWidget{
   .globalPointsBalance strong{font-size:18px;}
   .globalPointsUnit{font-size:11px;}
 }
+
+
+/* === FINAL GLOBAL POINTS BALANCE VIEWPORT FIX ===
+   Direct child of <body>, anchored to the viewport and never to page content. */
+body > .globalPointsBalance{
+  position:fixed!important;
+  top:calc(env(safe-area-inset-top, 0px) + 76px)!important;
+  right:12px!important;
+  bottom:auto!important;
+  left:auto!important;
+  z-index:2147483647!important;
+  transform:translate3d(0,0,0)!important;
+  -webkit-transform:translate3d(0,0,0)!important;
+  will-change:transform!important;
+  isolation:isolate!important;
+  pointer-events:none!important;
+}
+
+@media(max-width:760px){
+  body > .globalPointsBalance{
+    top:calc(env(safe-area-inset-top, 0px) + 76px)!important;
+    right:10px!important;
+    max-width:calc(100vw - 20px)!important;
+  }
+}
