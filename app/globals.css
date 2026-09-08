@@ -1513,3 +1513,42 @@ body > .globalPointsBalance{
     left:14px!important;
   }
 }
+
+
+/* === Envelope size: smaller and more discreet === */
+.globalEnvelopeIcon{
+  width:46px!important;
+  height:46px!important;
+  flex-basis:46px!important;
+  border-radius:15px!important;
+}
+.globalEnvelopeIcon svg{
+  width:25px!important;
+  height:25px!important;
+}
+.globalMessagesButton{
+  gap:6px!important;
+}
+.globalMessagesCount{
+  min-width:23px!important;
+  height:23px!important;
+  padding:0 6px!important;
+  font-size:10px!important;
+}
+@media(max-width:700px){
+  .globalEnvelopeIcon{
+    width:42px!important;
+    height:42px!important;
+    flex-basis:42px!important;
+    border-radius:14px!important;
+  }
+  .globalEnvelopeIcon svg{
+    width:23px!important;
+    height:23px!important;
+  }
+  .globalMessagesCount{
+    min-width:21px!important;
+    height:21px!important;
+    font-size:10px!important;
+  }
+}
