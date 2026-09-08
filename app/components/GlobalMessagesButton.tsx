@@ -73,9 +73,7 @@ export default function GlobalMessagesButton() {
       clears.forEach((item) => {
         const timestamp = new Date(item.cleared_at).getTime();
         const previous = clearMap.get(item.other_user_id);
-        if (!previous || timestamp > previous) {
-          clearMap.set(item.other_user_id, timestamp);
-        }
+        if (!previous || timestamp > previous) clearMap.set(item.other_user_id, timestamp);
       });
 
       const unread = ((messagesResult.data || []) as PrivateMessage[]).filter((message) => {
@@ -98,108 +96,28 @@ export default function GlobalMessagesButton() {
     };
   }, []);
 
-  // L'enveloppe ne doit jamais apparaître sur les pages d'authentification.
-  const authPages = ["/login", "/signup", "/reset-password"];
-  if (authPages.includes(pathname) || !visible) return null;
+  // L'enveloppe est réservée aux pages internes de l'application.
+  // Elle ne doit jamais apparaître sur l'accueil ni sur les pages publiques/authentification.
+  const hiddenPaths = new Set([
+    "/",
+    "/login",
+    "/signup",
+    "/reset-password"
+  ]);
+
+  if (hiddenPaths.has(pathname) || !visible) return null;
 
   return (
-    <>
-      <Link href="/messages" className="globalMessagesButton" aria-label="Ouvrir les messages">
-        <span className="globalEnvelopeIcon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none">
-            <path d="M3.5 6.5A2.5 2.5 0 0 1 6 4h12a2.5 2.5 0 0 1 2.5 2.5v11A2.5 2.5 0 0 1 18 20H6a2.5 2.5 0 0 1-2.5-2.5v-11Z" />
-            <path d="m4.5 6 6.3 5.1a1.9 1.9 0 0 0 2.4 0L19.5 6" />
-          </svg>
-        </span>
-        {count > 0 && (
-          <span className="globalMessagesCount">{count > 99 ? "99+" : count}</span>
-        )}
-      </Link>
-
-      <style jsx>{`
-        .globalMessagesButton {
-          position: fixed;
-          /* Sous la barre d'état, dans la zone entourée à gauche. */
-          top: max(118px, calc(env(safe-area-inset-top) + 86px));
-          left: 18px;
-          z-index: 10000;
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          text-decoration: none;
-          -webkit-tap-highlight-color: transparent;
-        }
-
-        .globalEnvelopeIcon {
-          width: 58px;
-          height: 58px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 19px;
-          background: linear-gradient(145deg, #42d887, #1fa860);
-          border: 1px solid rgba(171, 255, 215, .65);
-          box-shadow: 0 12px 30px rgba(38, 192, 108, .34), inset 0 1px 0 rgba(255,255,255,.28);
-          transition: transform .18s ease, box-shadow .18s ease;
-        }
-
-        .globalEnvelopeIcon svg {
-          width: 31px;
-          height: 31px;
-          stroke: #fff;
-          stroke-width: 1.9;
-          stroke-linecap: round;
-          stroke-linejoin: round;
-        }
-
-        .globalMessagesButton:hover .globalEnvelopeIcon,
-        .globalMessagesButton:active .globalEnvelopeIcon {
-          transform: translateY(-2px) scale(1.03);
-          box-shadow: 0 16px 34px rgba(38, 192, 108, .46), inset 0 1px 0 rgba(255,255,255,.28);
-        }
-
-        .globalMessagesCount {
-          min-width: 28px;
-          height: 28px;
-          padding: 0 8px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 999px;
-          background: #e94f5d;
-          color: #fff;
-          font-size: 12px;
-          font-weight: 900;
-          line-height: 1;
-          box-shadow: 0 4px 14px rgba(233,79,93,.38);
-          border: 2px solid rgba(255,255,255,.14);
-        }
-
-        @media (max-width: 700px) {
-          .globalMessagesButton {
-            top: max(112px, calc(env(safe-area-inset-top) + 82px));
-            left: 14px;
-          }
-
-          .globalEnvelopeIcon {
-            width: 54px;
-            height: 54px;
-            border-radius: 18px;
-          }
-
-          .globalEnvelopeIcon svg {
-            width: 29px;
-            height: 29px;
-          }
-
-          .globalMessagesCount {
-            min-width: 25px;
-            height: 25px;
-            padding: 0 7px;
-            font-size: 11px;
-          }
-        }
-      `}</style>
-    </>
+    <Link href="/messages" className="globalMessagesButton" aria-label="Ouvrir les messages">
+      <span className="globalEnvelopeIcon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path d="M3.5 6.5A2.5 2.5 0 0 1 6 4h12a2.5 2.5 0 0 1 2.5 2.5v11A2.5 2.5 0 0 1 18 20H6a2.5 2.5 0 0 1-2.5-2.5v-11Z" />
+          <path d="m4.5 6 6.3 5.1a1.9 1.9 0 0 0 2.4 0L19.5 6" />
+        </svg>
+      </span>
+      {count > 0 && (
+        <span className="globalMessagesCount">{count > 99 ? "99+" : count}</span>
+      )}
+    </Link>
   );
 }
