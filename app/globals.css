@@ -1561,3 +1561,73 @@ body > .globalPointsBalance{
 .globalMessagesShellHidden{
   display:none!important;
 }
+
+
+/* === Boutique d’échange AdPoints === */
+.exchangeShopCard{
+  min-height:250px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  border-color:rgba(73,221,144,.34)!important;
+  background:linear-gradient(145deg,#14283a,#102233)!important;
+}
+.exchangeShopCard h3{font-size:26px;margin:0 0 12px}
+.exchangeShopCard p{font-size:17px;line-height:1.55}
+.shopBrowseButton{
+  display:flex!important;
+  width:100%;
+  min-height:58px;
+  align-items:center;
+  justify-content:center;
+  margin-top:10px;
+  padding:14px 18px;
+  border-radius:16px;
+  background:linear-gradient(100deg,#37c97a,#32b76d);
+  color:#092118!important;
+  text-decoration:none!important;
+  font-weight:900;
+  font-size:17px;
+  box-shadow:0 12px 28px rgba(41,191,111,.18);
+}
+.shopPage{max-width:1000px;margin:0 auto;padding:58px 7% 90px}
+.shopPage h1{font-size:clamp(42px,7vw,72px);line-height:1;margin:24px 0 16px;letter-spacing:-2px}
+.shopPage h1 b{color:#47da91}
+.shopLead{max-width:680px;font-size:19px!important;line-height:1.6}
+.shopBalanceCard{
+  margin:34px 0 24px;
+  padding:24px 28px;
+  border:1px solid rgba(78,221,145,.34);
+  border-radius:22px;
+  background:linear-gradient(120deg,rgba(22,58,54,.92),rgba(17,37,52,.96));
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:18px;
+}
+.shopBalanceCard span{color:#aebdcb;font-size:16px}
+.shopBalanceCard strong{color:#62dc9a;font-size:28px}
+.shopEmpty{
+  min-height:330px;
+  border:1px solid #294158;
+  border-radius:28px;
+  background:#142235;
+  padding:42px 28px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+}
+.shopEmptyIcon{font-size:52px;margin-bottom:12px}
+.shopEmpty h2{font-size:30px;margin:0 0 12px}
+.shopEmpty p{max-width:580px;color:#aebdcb;font-size:17px;line-height:1.6;margin:0 0 24px}
+.shopEmpty .shopBrowseButton{max-width:420px}
+@media(max-width:700px){
+ .shopPage{padding:42px 18px 70px}
+ .shopPage h1{letter-spacing:-1px}
+ .shopLead{font-size:17px!important}
+ .shopBalanceCard{padding:20px;align-items:flex-start;flex-direction:column;gap:7px}
+ .shopBalanceCard strong{font-size:25px}
+ .shopEmpty{padding:36px 20px;min-height:300px}
+}
