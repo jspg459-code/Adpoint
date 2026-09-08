@@ -5,6 +5,7 @@ import ActivityLogger from "./components/ActivityLogger";
 import GlobalPointsBalance from "./components/GlobalPointsBalance";
 import PresenceTracker from "./components/PresenceTracker";
 import { PointsProvider } from "./components/PointsProvider";
+import GlobalMessagesButton from "./components/GlobalMessagesButton";
 
 export const metadata = {
   title: "AdPoints",
@@ -22,6 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ActivityLogger />
           <BetaBadge />
           <LanguageSelector />
+          <GlobalMessagesButton />
         </PointsProvider>
       </body>
     </html>
