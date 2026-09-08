@@ -197,7 +197,9 @@ export default function MessagesPage() {
 
     const list = (staffData || []) as Contact[];
     setContacts(list);
-    setSelectedId((current) => current || list[0]?.id || "");
+    // Ne pas ouvrir automatiquement une conversation : l'utilisateur doit choisir
+    // explicitement le contact, ce qui permet aussi de refermer la conversation.
+    setSelectedId((current) => list.some((person) => person.id === current) ? current : "");
   }
 
   const selectedContact = contacts.find((person) => person.id === selectedId);
@@ -303,8 +305,10 @@ export default function MessagesPage() {
     // de réception puisque toute sa conversation a été supprimée de ce côté.
     if (isStaff) {
       setContacts((current) => current.filter((person) => person.id !== otherUserId));
-      setSelectedId("");
     }
+
+    // Ferme immédiatement la conversation pour tous les rôles.
+    setSelectedId("");
 
     await logAudit("private_conversation_cleared", { other_user_id: otherUserId }, "/messages");
 
@@ -461,6 +465,9 @@ export default function MessagesPage() {
                 <>
                   <div className="chatHeader">
                     <div>
+                      <button type="button" className="conversationBack" onClick={() => setSelectedId("")}>
+                        ← Réduire la conversation
+                      </button>
                       <strong>{selectedContact.username || selectedContact.email}</strong>
                       <span>{selectedContact.role === "creator" ? "Créateur AdPoints" : "Administrateur AdPoints"}</span>
                     </div>
