@@ -43,9 +43,12 @@ export default function ShopPage() {
     if (!showAll) query = query.eq("is_active", true);
 
     const { data, error } = await query;
+    const rewardList = (data || []) as Reward[];
 
-    if (!error) setOffers((data || []) as Reward[]);
+    if (!error) setOffers(rewardList);
     setLoadingOffers(false);
+
+    return { rewards: rewardList, error };
   }, []);
 
   useEffect(() => {
@@ -65,7 +68,17 @@ export default function ShopPage() {
         .single();
 
       setProfile(data || null);
-      await Promise.all([refreshPoints(), loadOffers(data?.role === "creator")]);
+
+      const [_, offersResult] = await Promise.all([
+        refreshPoints(),
+        loadOffers(data?.role === "creator")
+      ]);
+
+      // Boutique désactivée : aucun utilisateur standard ne doit pouvoir
+      // y accéder, même en ouvrant directement /shop.
+      if (data?.role !== "creator" && !offersResult.error && offersResult.rewards.length === 0) {
+        router.replace("/dashboard");
+      }
     })();
   }, [router, refreshPoints, loadOffers]);
 
