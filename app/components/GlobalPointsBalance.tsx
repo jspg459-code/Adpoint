@@ -4,6 +4,12 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { supabase } from "../lib/supabase";
 
+function publishPoints(value: number | null) {
+  if (typeof window === "undefined") return;
+  (window as any).__ADPOINTS_POINTS__ = value;
+  window.dispatchEvent(new CustomEvent("adpoints:points-changed", { detail: value }));
+}
+
 export default function GlobalPointsBalance() {
   const pathname = usePathname();
   const [points, setPoints] = useState<number | null>(null);
@@ -17,7 +23,7 @@ export default function GlobalPointsBalance() {
       const { data: { user } } = await supabase.auth.getUser();
 
       if (!user) {
-        if (active) setPoints(null);
+        if (active) { setPoints(null); publishPoints(null); }
         return;
       }
 
@@ -27,7 +33,11 @@ export default function GlobalPointsBalance() {
         .eq("id", user.id)
         .single();
 
-      if (active) setPoints(Number(data?.points_balance ?? 0));
+      if (active) {
+        const nextPoints = Number(data?.points_balance ?? 0);
+        setPoints(nextPoints);
+        publishPoints(nextPoints);
+      }
 
       channel = supabase
         .channel("global-points-balance-" + user.id)
@@ -41,7 +51,9 @@ export default function GlobalPointsBalance() {
           },
           (payload) => {
             const next = payload.new as { points_balance?: number };
-            setPoints(Number(next.points_balance ?? 0));
+            const nextPoints = Number(next.points_balance ?? 0);
+            setPoints(nextPoints);
+            publishPoints(nextPoints);
           }
         )
         .subscribe();
@@ -50,7 +62,7 @@ export default function GlobalPointsBalance() {
     void loadBalance();
 
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session?.user) setPoints(null);
+      if (!session?.user) { setPoints(null); publishPoints(null); }
       else void loadBalance();
     });
 
