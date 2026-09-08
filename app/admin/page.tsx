@@ -463,6 +463,7 @@ export default function AdminPage() {
         <nav className="cleanTextNav">
           <Link href="/dashboard">Tableau de bord</Link>
           <Link href="/profile">Mon profil</Link>
+          <Link href="/messages">Messages</Link>
           <Link href="/admin" className="active">Administration</Link>
         </nav>
       </header>
