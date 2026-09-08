@@ -5,7 +5,6 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
 import { logAudit } from "../lib/audit";
-import MessagesNavLink from "../components/MessagesNavLink";
 
 type Contact = {
   id: string;
@@ -379,7 +378,6 @@ export default function MessagesPage() {
           <Link href="/dashboard">Tableau de bord</Link>
           <Link href="/ranking">Classement</Link>
           <Link href="/profile">Mon profil</Link>
-          <MessagesNavLink active />
           {isStaff && <Link href="/admin">Administration</Link>}
           <button onClick={logout}>Déconnexion</button>
         </nav>
