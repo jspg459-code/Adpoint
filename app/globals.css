@@ -1334,3 +1334,45 @@ body > .globalPointsBalance{
     max-width:calc(100vw - 20px)!important;
   }
 }
+
+
+/* Private messaging */
+.messagesPage{padding-bottom:64px}
+.messagesIntro{max-width:1100px;margin:56px auto 28px;padding:0 28px}
+.messagesIntro h1{font-size:clamp(32px,5vw,56px);margin:14px 0 10px}
+.messagesIntro p{color:var(--muted,#aeb8c7);font-size:18px;line-height:1.6;max-width:760px}
+.messagesShell{max-width:1100px;margin:0 auto;padding:0 28px;display:grid;grid-template-columns:280px 1fr;gap:18px;min-height:620px}
+.contactsPanel,.chatPanel{border:1px solid rgba(104,145,178,.35);background:#1b2b3b;border-radius:28px;overflow:hidden}
+.contactsPanel{padding:20px}
+.contactsPanel h2{margin:0 0 16px}
+.contactItem{width:100%;display:flex;align-items:center;gap:12px;text-align:left;background:transparent;border:1px solid transparent;border-radius:18px;padding:12px;margin-bottom:8px;color:inherit}
+.contactItem:hover,.contactItem.selected{background:rgba(61,190,124,.12);border-color:rgba(81,212,143,.38)}
+.contactAvatar{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:#38b878;color:#102235;font-weight:800;flex:0 0 auto}
+.contactItem strong,.contactItem small{display:block}
+.contactItem small{color:#9eabbc;margin-top:3px}
+.chatPanel{display:flex;flex-direction:column;min-height:620px}
+.chatHeader{display:flex;align-items:center;justify-content:space-between;padding:20px 22px;border-bottom:1px solid rgba(104,145,178,.25)}
+.chatHeader strong,.chatHeader span{display:block}
+.chatHeader span{color:#9eabbc;margin-top:4px}
+.chatRefresh{background:transparent!important;color:#8fd9ae!important;border:1px solid rgba(81,212,143,.4)!important;padding:9px 14px!important;border-radius:12px!important}
+.chatMessages{flex:1;padding:22px;display:flex;flex-direction:column;gap:12px;overflow:auto;min-height:350px}
+.chatBubble{max-width:76%;align-self:flex-start;background:#132232;border:1px solid rgba(104,145,178,.28);border-radius:18px 18px 18px 4px;padding:12px 14px}
+.chatBubble.mine{align-self:flex-end;background:#2fb36f;color:#0c1c18;border-radius:18px 18px 4px 18px}
+.chatBubble p{margin:0 0 7px;white-space:pre-wrap;line-height:1.45}
+.chatBubble small{opacity:.72;font-size:11px}
+.emptyConversation{margin:auto;text-align:center;color:#aeb8c7;display:grid;gap:8px;padding:30px}
+.emptyConversation strong{color:#e8edf2;font-size:20px}
+.chatComposer{border-top:1px solid rgba(104,145,178,.25);padding:16px}
+.chatComposer textarea{width:100%;resize:vertical;min-height:76px;background:#122130;border:1px solid rgba(104,145,178,.5);border-radius:16px;padding:14px;color:#eef3f8;font:inherit}
+.chatComposer>div{display:flex;justify-content:space-between;align-items:center;margin-top:10px}
+.chatComposer span{font-size:12px;color:#8f9bab}
+.chatComposer button{padding:11px 22px!important;border-radius:14px!important}
+@media(max-width:760px){
+  .messagesIntro{margin-top:32px;padding:0 18px}
+  .messagesShell{grid-template-columns:1fr;padding:0 18px;min-height:0}
+  .contactsPanel{padding:14px}
+  .contactsPanel h2{margin-left:6px}
+  .chatPanel{min-height:560px}
+  .contactItem{margin-bottom:4px}
+  .cleanTextNav{flex-wrap:wrap}
+}
