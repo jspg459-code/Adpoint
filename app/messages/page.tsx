@@ -204,6 +204,52 @@ export default function MessagesPage() {
 
   const selectedContact = contacts.find((person) => person.id === selectedId);
 
+  const unreadCountFor = (personId: string) =>
+    messages.filter(
+      (message) =>
+        message.sender_id === personId &&
+        message.recipient_id === me?.id &&
+        !message.read_at
+    ).length;
+
+  const totalUnread = useMemo(
+    () => messages.filter((message) => message.recipient_id === me?.id && !message.read_at).length,
+    [messages, me?.id]
+  );
+
+  // Dès qu'une conversation est réellement ouverte, les messages reçus dans cette
+  // conversation passent en "lus". Tant qu'elle reste fermée, le badge reste visible.
+  useEffect(() => {
+    if (!me || !selectedId) return;
+
+    const unreadIds = messages
+      .filter(
+        (message) =>
+          message.sender_id === selectedId &&
+          message.recipient_id === me.id &&
+          !message.read_at
+      )
+      .map((message) => message.id);
+
+    if (!unreadIds.length) return;
+
+    const readAt = new Date().toISOString();
+
+    void supabase
+      .from("private_messages")
+      .update({ read_at: readAt })
+      .in("id", unreadIds)
+      .then(({ error }) => {
+        if (!error) {
+          setMessages((current) =>
+            current.map((message) =>
+              unreadIds.includes(message.id) ? { ...message, read_at: readAt } : message
+            )
+          );
+        }
+      });
+  }, [selectedId, me?.id, messages]);
+
   const conversation = useMemo(() => {
     if (!me || !selectedId) return [];
     return messages.filter(
@@ -332,7 +378,9 @@ export default function MessagesPage() {
           <Link href="/dashboard">Tableau de bord</Link>
           <Link href="/ranking">Classement</Link>
           <Link href="/profile">Mon profil</Link>
-          <Link href="/messages" className="active">Messages</Link>
+          <Link href="/messages" className="active">
+            Messages{totalUnread > 0 && <span className="unreadNavBadge">{totalUnread > 99 ? "99+" : totalUnread}</span>}
+          </Link>
           {isStaff && <Link href="/admin">Administration</Link>}
           <button onClick={logout}>Déconnexion</button>
         </nav>
@@ -368,6 +416,11 @@ export default function MessagesPage() {
                         <strong>{person.username || person.email}</strong>
                         <small>Utilisateur</small>
                       </span>
+                      {unreadCountFor(person.id) > 0 && (
+                        <span className="unreadBadge" aria-label={`${unreadCountFor(person.id)} message(s) non lu(s)`}>
+                          {unreadCountFor(person.id) > 99 ? "99+" : unreadCountFor(person.id)}
+                        </span>
+                      )}
                     </button>
                   ))}
                 </div>
@@ -456,6 +509,11 @@ export default function MessagesPage() {
                     <strong>{person.username || person.email}</strong>
                     <small>{person.role === "creator" ? "Créateur" : "Administrateur"}</small>
                   </span>
+                  {unreadCountFor(person.id) > 0 && (
+                    <span className="unreadBadge" aria-label={`${unreadCountFor(person.id)} message(s) non lu(s)`}>
+                      {unreadCountFor(person.id) > 99 ? "99+" : unreadCountFor(person.id)}
+                    </span>
+                  )}
                 </button>
               ))}
             </aside>
@@ -526,6 +584,41 @@ export default function MessagesPage() {
       )}
 
       {status && <div className="profileMessage error">{status}</div>}
+      <style jsx>{`
+        .unreadBadge {
+          margin-left: auto;
+          min-width: 26px;
+          height: 26px;
+          padding: 0 7px;
+          border-radius: 999px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background: #ff5b62;
+          color: white;
+          font-size: 12px;
+          font-weight: 900;
+          box-shadow: 0 0 0 3px rgba(255,91,98,.12);
+          flex: 0 0 auto;
+        }
+        :global(.cleanTextNav a.active) { position: relative; }
+        :global(.unreadNavBadge) {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 18px;
+          height: 18px;
+          margin-left: 6px;
+          padding: 0 5px;
+          border-radius: 999px;
+          background: #ff5b62;
+          color: white;
+          font-size: 10px;
+          font-weight: 900;
+          line-height: 1;
+          vertical-align: middle;
+        }
+      `}</style>
     </main>
   );
 }
