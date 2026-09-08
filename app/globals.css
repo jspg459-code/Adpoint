@@ -1422,3 +1422,78 @@ body > .globalPointsBalance{
   vertical-align:middle!important;
   box-shadow:0 0 0 3px rgba(239,91,98,.12)!important;
 }
+
+
+/* === Global message envelope: fixed at the top-left of the app === */
+.globalMessagesButton{
+  position:fixed!important;
+  top:max(118px,calc(env(safe-area-inset-top) + 86px))!important;
+  left:18px!important;
+  right:auto!important;
+  bottom:auto!important;
+  z-index:2147483000!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  gap:8px!important;
+  width:auto!important;
+  height:auto!important;
+  margin:0!important;
+  padding:0!important;
+  text-decoration:none!important;
+  background:transparent!important;
+  color:inherit!important;
+  border:0!important;
+  transform:none!important;
+  -webkit-tap-highlight-color:transparent;
+}
+.globalEnvelopeIcon{
+  width:58px!important;
+  height:58px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  flex:0 0 58px!important;
+  border-radius:19px!important;
+  background:linear-gradient(145deg,#42d887,#1fa860)!important;
+  border:1px solid rgba(171,255,215,.72)!important;
+  box-shadow:0 12px 30px rgba(38,192,108,.34),inset 0 1px 0 rgba(255,255,255,.28)!important;
+}
+.globalEnvelopeIcon svg{
+  width:31px!important;
+  height:31px!important;
+  display:block!important;
+  stroke:#fff!important;
+  stroke-width:1.9!important;
+  stroke-linecap:round!important;
+  stroke-linejoin:round!important;
+}
+.globalMessagesCount{
+  min-width:28px!important;
+  height:28px!important;
+  padding:0 8px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  border-radius:999px!important;
+  background:#e94f5d!important;
+  color:#fff!important;
+  font-size:12px!important;
+  font-weight:900!important;
+  line-height:1!important;
+  box-shadow:0 4px 14px rgba(233,79,93,.38)!important;
+  border:2px solid rgba(255,255,255,.14)!important;
+}
+@media(max-width:700px){
+  .globalMessagesButton{
+    top:max(112px,calc(env(safe-area-inset-top) + 82px))!important;
+    left:14px!important;
+  }
+  .globalEnvelopeIcon{
+    width:54px!important;
+    height:54px!important;
+    flex-basis:54px!important;
+    border-radius:18px!important;
+  }
+  .globalEnvelopeIcon svg{width:29px!important;height:29px!important}
+  .globalMessagesCount{min-width:25px!important;height:25px!important;padding:0 7px!important;font-size:11px!important}
+}
