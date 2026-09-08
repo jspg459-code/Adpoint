@@ -1245,3 +1245,13 @@ body > .languageWidget{
     min-width:64px!important;
   }
 }
+
+
+/* MOBILE DASHBOARD NAVIGATION: horizontal swipe */
+@media(max-width:760px){
+.dash > header.cleanTopHeader{display:flex!important;flex-direction:column!important;align-items:stretch!important;justify-content:flex-end!important;gap:10px!important;padding-left:0!important;padding-right:0!important}
+.dash > header.cleanTopHeader .textBrand{align-self:center!important;flex:0 0 auto!important}
+.dash > header.cleanTopHeader .cleanTextNav{width:100%!important;max-width:100vw!important;min-width:0!important;display:flex!important;flex-wrap:nowrap!important;justify-content:flex-start!important;align-items:center!important;gap:28px!important;overflow-x:auto!important;overflow-y:hidden!important;padding:4px 20px 10px!important;-webkit-overflow-scrolling:touch!important;scroll-behavior:smooth!important;scroll-snap-type:x proximity!important;overscroll-behavior-x:contain!important;scrollbar-width:none!important;touch-action:pan-x pan-y!important}
+.dash > header.cleanTopHeader .cleanTextNav::-webkit-scrollbar{display:none!important}
+.dash > header.cleanTopHeader .cleanTextNav a,.dash > header.cleanTopHeader .cleanTextNav button{flex:0 0 auto!important;white-space:nowrap!important;scroll-snap-align:start!important}
+}
