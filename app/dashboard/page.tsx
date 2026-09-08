@@ -5,13 +5,11 @@ import {useEffect,useState} from "react";
 import {useRouter} from "next/navigation";
 import {supabase} from "../lib/supabase";
 import { logAudit } from "../lib/audit";
-import { usePointsBalance } from "../components/PointsProvider";
 
 export default function Dashboard(){
  const router=useRouter();
  const [profile,setProfile]=useState<any>(null);
  const [activities,setActivities]=useState<any[]>([]);
- const { points: globalPoints, refreshPoints } = usePointsBalance();
  const [username,setUsername]=useState("");
  const [saving,setSaving]=useState(false);
  const [message,setMessage]=useState("");
@@ -20,7 +18,6 @@ export default function Dashboard(){
 
  useEffect(()=>{
   void load();
-  void refreshPoints();
  },[]);
 
  async function load(){
@@ -62,7 +59,6 @@ export default function Dashboard(){
 
   setBlocked(null);
   setProfile(currentProfile); setUsername(currentProfile?.username||""); setActivities(a||[]);
-  void refreshPoints();
   // Tous les comptes ayant le rôle admin voient l'accès Administration.
   // Seul le propriétaire peut nommer d'autres administrateurs (contrôle côté panel/serveur).
   setIsAdmin(currentProfile?.role === "admin" || currentProfile?.role === "creator");
@@ -113,7 +109,6 @@ export default function Dashboard(){
 
   <section className="dashHero">
    <div><span className="eyebrow">BON RETOUR</span><h1>Bonjour {profile?.username||"👋"}</h1><p>Ton compte est connecté avec succès.</p></div>
-   <div className="balance"><small>SOLDE</small><strong>{globalPoints ?? profile?.points_balance ?? 0}</strong><span>AdPoints</span></div>
   </section>
 
   {needsUsername&&<section className="profileBox"><h2>Choisis ton pseudo</h2><p className="muted">Il sera affiché à la place de ton adresse e-mail. Tu pourras le modifier plus tard depuis ton profil.</p>
