@@ -22,16 +22,22 @@ type PrivateMessage = {
   read_at: string | null;
 };
 
+type ConversationClear = {
+  other_user_id: string;
+  cleared_at: string;
+};
+
 export default function MessagesPage() {
   const router = useRouter();
   const [me, setMe] = useState<{ id: string; role: string | null } | null>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [messages, setMessages] = useState<PrivateMessage[]>([]);
+  const [clears, setClears] = useState<ConversationClear[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [draft, setDraft] = useState("");
   const [status, setStatus] = useState("");
   const [sending, setSending] = useState(false);
-  const [deletingId, setDeletingId] = useState("");
+  const [deletingConversation, setDeletingConversation] = useState(false);
 
   const isStaff = me?.role === "admin" || me?.role === "creator";
 
@@ -69,28 +75,50 @@ export default function MessagesPage() {
   }
 
   async function loadMessagesAndContacts(currentMe: { id: string; role: string | null }) {
-    const { data, error } = await supabase
-      .from("private_messages")
-      .select("id,sender_id,recipient_id,content,created_at,read_at")
-      .or(`sender_id.eq.${currentMe.id},recipient_id.eq.${currentMe.id}`)
-      .order("created_at", { ascending: true });
+    const [messagesResult, clearsResult] = await Promise.all([
+      supabase
+        .from("private_messages")
+        .select("id,sender_id,recipient_id,content,created_at,read_at")
+        .or(`sender_id.eq.${currentMe.id},recipient_id.eq.${currentMe.id}`)
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("private_conversation_clears")
+        .select("other_user_id,cleared_at")
+        .eq("user_id", currentMe.id)
+    ]);
 
-    if (error) {
-      setStatus(error.message || "Impossible de charger les messages.");
+    if (messagesResult.error) {
+      setStatus(messagesResult.error.message || "Impossible de charger les messages.");
       return;
     }
 
-    const allMessages = (data || []) as PrivateMessage[];
-    setMessages(allMessages);
+    if (clearsResult.error) {
+      setStatus(clearsResult.error.message || "Impossible de charger les conversations.");
+      return;
+    }
+
+    const currentClears = (clearsResult.data || []) as ConversationClear[];
+    setClears(currentClears);
+
+    const clearMap = new Map(
+      currentClears.map((item) => [item.other_user_id, new Date(item.cleared_at).getTime()])
+    );
+
+    const visibleMessages = ((messagesResult.data || []) as PrivateMessage[]).filter((message) => {
+      const otherId = message.sender_id === currentMe.id ? message.recipient_id : message.sender_id;
+      const clearedAt = clearMap.get(otherId);
+      return !clearedAt || new Date(message.created_at).getTime() > clearedAt;
+    });
+
+    setMessages(visibleMessages);
 
     const staffMode = currentMe.role === "admin" || currentMe.role === "creator";
 
     if (staffMode) {
-      // Un administrateur/créateur ne contacte pas l'administration :
-      // il voit uniquement les utilisateurs qui lui ont écrit.
+      // Les admins/créateurs voient uniquement les utilisateurs qui leur ont écrit.
       const ids = Array.from(
         new Set(
-          allMessages
+          visibleMessages
             .map((message) =>
               message.sender_id === currentMe.id ? message.recipient_id : message.sender_id
             )
@@ -114,18 +142,24 @@ export default function MessagesPage() {
         return;
       }
 
-      const list = ((users || []) as Contact[]).sort((a, b) => {
-        const aLast = Math.max(...allMessages.filter(m => m.sender_id === a.id || m.recipient_id === a.id).map(m => new Date(m.created_at).getTime()));
-        const bLast = Math.max(...allMessages.filter(m => m.sender_id === b.id || m.recipient_id === b.id).map(m => new Date(m.created_at).getTime()));
-        return bLast - aLast;
-      });
+      const list = ((users || []) as Contact[])
+        .filter((person) => person.role !== "admin" && person.role !== "creator")
+        .sort((a, b) => {
+          const aLast = Math.max(...visibleMessages
+            .filter(m => m.sender_id === a.id || m.recipient_id === a.id)
+            .map(m => new Date(m.created_at).getTime()));
+          const bLast = Math.max(...visibleMessages
+            .filter(m => m.sender_id === b.id || m.recipient_id === b.id)
+            .map(m => new Date(m.created_at).getTime()));
+          return bLast - aLast;
+        });
 
       setContacts(list);
-      setSelectedId((current) => list.some((person) => person.id === current) ? current : list[0]?.id || "");
+      setSelectedId((current) => list.some((person) => person.id === current) ? current : "");
       return;
     }
 
-    // Utilisateur normal : il peut uniquement choisir un créateur ou administrateur.
+    // Utilisateur : contacts de support uniquement.
     const { data: staffData, error: staffError } = await supabase.rpc("list_contact_staff");
 
     if (staffError) {
@@ -158,9 +192,10 @@ export default function MessagesPage() {
     setSending(true);
     setStatus("");
 
+    const recipientId = selectedId;
     const { error } = await supabase.from("private_messages").insert({
       sender_id: me.id,
-      recipient_id: selectedId,
+      recipient_id: recipientId,
       content: text
     });
 
@@ -171,33 +206,64 @@ export default function MessagesPage() {
     }
 
     setDraft("");
-    await logAudit("private_message_sent", { recipient_id: selectedId }, "/messages");
+    await logAudit("private_message_sent", { recipient_id: recipientId }, "/messages");
     await refresh();
+
+    // Côté administration, après la réponse on ferme la conversation
+    // et on revient directement à la liste des utilisateurs.
+    if (isStaff) setSelectedId("");
+
     setSending(false);
   }
 
-  async function deleteMessage(message: PrivateMessage) {
-    if (!me || message.sender_id !== me.id || deletingId) return;
-    if (!window.confirm("Supprimer définitivement ce message ?")) return;
+  async function deleteConversation() {
+    if (!me || !selectedId || deletingConversation) return;
+    const person = selectedContact?.username || selectedContact?.email || "cette conversation";
 
-    setDeletingId(message.id);
-    setStatus("");
-
-    const { error } = await supabase
-      .from("private_messages")
-      .delete()
-      .eq("id", message.id)
-      .eq("sender_id", me.id);
-
-    if (error) {
-      setStatus(error.message || "Impossible de supprimer le message.");
-      setDeletingId("");
+    if (!window.confirm(`Supprimer cette conversation de votre messagerie avec ${person} ? Elle sera supprimée uniquement de votre côté.`)) {
       return;
     }
 
-    setMessages((current) => current.filter((item) => item.id !== message.id));
-    await logAudit("private_message_deleted", { message_id: message.id }, "/messages");
-    setDeletingId("");
+    setDeletingConversation(true);
+    setStatus("");
+
+    const now = new Date().toISOString();
+    const { error } = await supabase
+      .from("private_conversation_clears")
+      .upsert(
+        {
+          user_id: me.id,
+          other_user_id: selectedId,
+          cleared_at: now
+        },
+        { onConflict: "user_id,other_user_id" }
+      );
+
+    if (error) {
+      setStatus(error.message || "Impossible de supprimer la conversation.");
+      setDeletingConversation(false);
+      return;
+    }
+
+    setClears((current) => [
+      ...current.filter((item) => item.other_user_id !== selectedId),
+      { other_user_id: selectedId, cleared_at: now }
+    ]);
+    setMessages((current) =>
+      current.filter((message) =>
+        !(
+          (message.sender_id === me.id && message.recipient_id === selectedId) ||
+          (message.sender_id === selectedId && message.recipient_id === me.id)
+        )
+      )
+    );
+
+    await logAudit("private_conversation_cleared", { other_user_id: selectedId }, "/messages");
+
+    // Pour le staff on retourne à la liste. Pour l'utilisateur, le contact
+    // reste disponible mais la conversation devient vide.
+    if (isStaff) setSelectedId("");
+    setDeletingConversation(false);
   }
 
   async function logout() {
@@ -205,11 +271,6 @@ export default function MessagesPage() {
     await supabase.auth.signOut();
     router.replace("/");
   }
-
-  const title = isStaff ? "Messages reçus" : "Contacter l'administration";
-  const description = isStaff
-    ? "Retrouve ici les utilisateurs qui t'ont contacté. Sélectionne une conversation pour lire les messages et répondre."
-    : "Envoie un message privé directement au créateur ou à un administrateur. Tes échanges restent visibles uniquement par les participants concernés.";
 
   return (
     <main className="dash messagesPage">
@@ -225,212 +286,188 @@ export default function MessagesPage() {
         </nav>
       </header>
 
-      {!isStaff && (
-        <section className="messagesIntro">
-          <span className="eyebrow">BESOIN D'AIDE ?</span>
-          <h1>{title}</h1>
-          <p>{description}</p>
-        </section>
-      )}
-
       {isStaff ? (
-        <section
-          className="messagesShell staffMessagesShell"
-          style={{ display: "block", minHeight: "auto", paddingTop: "28px" }}
-        >
-          <h1 style={{ margin: "0 0 18px", fontSize: "clamp(32px,5vw,56px)" }}>Messages reçus</h1>
-          {contacts.length === 0 ? (
-            <div className="chatPanel" style={{ minHeight: "420px" }}>
-              <div className="emptyConversation">
-                <strong>Aucun message reçu</strong>
-                <span>Les messages des utilisateurs apparaîtront ici dès qu'ils te contacteront.</span>
-              </div>
+        <section className="messagesShell staffMessagesShell">
+          {!selectedContact ? (
+            <div className="staffInbox">
+              <h1>Messages reçus</h1>
+              <p className="muted">Sélectionne un utilisateur pour ouvrir sa conversation.</p>
+
+              {contacts.length === 0 ? (
+                <div className="chatPanel staffEmpty">
+                  <div className="emptyConversation">
+                    <strong>Aucun message reçu</strong>
+                    <span>Les utilisateurs qui t'écriront apparaîtront ici.</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="contactsPanel staffContactsOnly">
+                  {contacts.map((person) => (
+                    <button
+                      key={person.id}
+                      type="button"
+                      className="contactItem"
+                      onClick={() => setSelectedId(person.id)}
+                    >
+                      <span className="contactAvatar">
+                        {(person.username || person.email).slice(0, 1).toUpperCase()}
+                      </span>
+                      <span>
+                        <strong>{person.username || person.email}</strong>
+                        <small>Utilisateur</small>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           ) : (
-            <>
-              <aside className="contactsPanel">
-                <h2>Messages reçus</h2>
-                {contacts.map((person) => (
-                  <button
-                    key={person.id}
-                    type="button"
-                    className={selectedId === person.id ? "contactItem selected" : "contactItem"}
-                    onClick={() => setSelectedId(person.id)}
-                  >
-                    <span className="contactAvatar">
-                      {(person.username || person.email).slice(0, 1).toUpperCase()}
-                    </span>
-                    <span>
-                      <strong>{person.username || person.email}</strong>
-                      <small>Utilisateur</small>
-                    </span>
+            <div className="chatPanel staffConversationOnly">
+              <div className="chatHeader">
+                <div>
+                  <button type="button" className="conversationBack" onClick={() => setSelectedId("")}>
+                    ← Retour aux messages
                   </button>
-                ))}
-              </aside>
-
-              <div className="chatPanel">
-                {selectedContact && (
-                  <>
-                    <div className="chatHeader">
-                      <div>
-                        <strong>{selectedContact.username || selectedContact.email}</strong>
-                        <span>Conversation utilisateur</span>
-                      </div>
-                      <button type="button" className="chatRefresh" onClick={refresh}>Actualiser</button>
-                    </div>
-
-                    <div className="chatMessages">
-                      {conversation.map((message) => {
-                        const mine = message.sender_id === me?.id;
-                        return (
-                          <article key={message.id} className={mine ? "chatBubble mine" : "chatBubble"}>
-                            <p>{message.content}</p>
-                            <small>{new Date(message.created_at).toLocaleString("fr-FR")}</small>
-                            {mine && (
-                              <button
-                                type="button"
-                                onClick={() => void deleteMessage(message)}
-                                disabled={deletingId === message.id}
-                                aria-label="Supprimer ce message"
-                                style={{
-                                  marginTop: "8px",
-                                  border: "0",
-                                  background: "transparent",
-                                  color: "#f38b8b",
-                                  cursor: deletingId === message.id ? "wait" : "pointer",
-                                  fontWeight: 700,
-                                  padding: 0
-                                }}
-                              >
-                                {deletingId === message.id ? "Suppression..." : "Supprimer"}
-                              </button>
-                            )}
-                          </article>
-                        );
-                      })}
-                    </div>
-
-                    <form className="chatComposer" onSubmit={sendMessage}>
-                      <textarea
-                        value={draft}
-                        onChange={(event) => setDraft(event.target.value)}
-                        placeholder={`Répondre à ${selectedContact.username || selectedContact.email}...`}
-                        maxLength={4000}
-                        rows={3}
-                      />
-                      <div>
-                        <span>{draft.length}/4000</span>
-                        <button disabled={!draft.trim() || sending} type="submit">
-                          {sending ? "Envoi..." : "Répondre"}
-                        </button>
-                      </div>
-                    </form>
-                  </>
-                )}
+                  <strong>{selectedContact.username || selectedContact.email}</strong>
+                  <span>Conversation utilisateur</span>
+                </div>
+                <div className="chatHeaderActions">
+                  <button type="button" className="chatRefresh" onClick={refresh}>Actualiser</button>
+                  <button type="button" className="deleteConversation" onClick={deleteConversation} disabled={deletingConversation}>
+                    {deletingConversation ? "Suppression..." : "Supprimer"}
+                  </button>
+                </div>
               </div>
-            </>
+
+              <div className="chatMessages">
+                {conversation.length === 0 ? (
+                  <div className="emptyConversation">
+                    <strong>Aucun message</strong>
+                    <span>Cette conversation est vide.</span>
+                  </div>
+                ) : conversation.map((message) => {
+                  const mine = message.sender_id === me?.id;
+                  return (
+                    <article key={message.id} className={mine ? "chatBubble mine" : "chatBubble"}>
+                      <p>{message.content}</p>
+                      <small>{new Date(message.created_at).toLocaleString("fr-FR")}</small>
+                    </article>
+                  );
+                })}
+              </div>
+
+              <form className="chatComposer" onSubmit={sendMessage}>
+                <textarea
+                  value={draft}
+                  onChange={(event) => setDraft(event.target.value)}
+                  placeholder={`Répondre à ${selectedContact.username || selectedContact.email}...`}
+                  maxLength={4000}
+                  rows={3}
+                />
+                <div>
+                  <span>{draft.length}/4000</span>
+                  <button disabled={!draft.trim() || sending} type="submit">
+                    {sending ? "Envoi..." : "Répondre"}
+                  </button>
+                </div>
+              </form>
+            </div>
           )}
         </section>
       ) : (
-        <section className="messagesShell">
-          <aside className="contactsPanel">
-            <h2>Contacts</h2>
+        <>
+          <section className="messagesIntro">
+            <span className="eyebrow">BESOIN D'AIDE ?</span>
+            <h1>Contacter l'administration</h1>
+            <p>Envoie un message privé directement au créateur ou à un administrateur. Tes échanges restent visibles uniquement par les participants concernés.</p>
+          </section>
 
-            {contacts.length === 0 && (
-              <p className="muted">Aucun administrateur disponible pour le moment.</p>
-            )}
+          <section className="messagesShell">
+            <aside className="contactsPanel">
+              <h2>Contacts</h2>
 
-            {contacts.map((person) => (
-              <button
-                key={person.id}
-                type="button"
-                className={selectedId === person.id ? "contactItem selected" : "contactItem"}
-                onClick={() => setSelectedId(person.id)}
-              >
-                <span className="contactAvatar">
-                  {(person.username || person.email).slice(0, 1).toUpperCase()}
-                </span>
-                <span>
-                  <strong>{person.username || person.email}</strong>
-                  <small>{person.role === "creator" ? "Créateur" : "Administrateur"}</small>
-                </span>
-              </button>
-            ))}
-          </aside>
+              {contacts.length === 0 && (
+                <p className="muted">Aucun administrateur disponible pour le moment.</p>
+              )}
 
-          <div className="chatPanel">
-            {selectedContact ? (
-              <>
-                <div className="chatHeader">
-                  <div>
-                    <strong>{selectedContact.username || selectedContact.email}</strong>
-                    <span>{selectedContact.role === "creator" ? "Créateur AdPoints" : "Administrateur AdPoints"}</span>
-                  </div>
-                  <button type="button" className="chatRefresh" onClick={refresh}>Actualiser</button>
-                </div>
+              {contacts.map((person) => (
+                <button
+                  key={person.id}
+                  type="button"
+                  className={selectedId === person.id ? "contactItem selected" : "contactItem"}
+                  onClick={() => setSelectedId(person.id)}
+                >
+                  <span className="contactAvatar">
+                    {(person.username || person.email).slice(0, 1).toUpperCase()}
+                  </span>
+                  <span>
+                    <strong>{person.username || person.email}</strong>
+                    <small>{person.role === "creator" ? "Créateur" : "Administrateur"}</small>
+                  </span>
+                </button>
+              ))}
+            </aside>
 
-                <div className="chatMessages">
-                  {conversation.length === 0 && (
-                    <div className="emptyConversation">
-                      <strong>Nouvelle conversation</strong>
-                      <span>Explique ton problème et un membre de l'équipe pourra te répondre ici.</span>
+            <div className="chatPanel">
+              {selectedContact ? (
+                <>
+                  <div className="chatHeader">
+                    <div>
+                      <strong>{selectedContact.username || selectedContact.email}</strong>
+                      <span>{selectedContact.role === "creator" ? "Créateur AdPoints" : "Administrateur AdPoints"}</span>
                     </div>
-                  )}
-
-                  {conversation.map((message) => {
-                    const mine = message.sender_id === me?.id;
-                    return (
-                      <article key={message.id} className={mine ? "chatBubble mine" : "chatBubble"}>
-                            <p>{message.content}</p>
-                            <small>{new Date(message.created_at).toLocaleString("fr-FR")}</small>
-                            {mine && (
-                              <button
-                                type="button"
-                                onClick={() => void deleteMessage(message)}
-                                disabled={deletingId === message.id}
-                                aria-label="Supprimer ce message"
-                                style={{
-                                  marginTop: "8px",
-                                  border: "0",
-                                  background: "transparent",
-                                  color: "#f38b8b",
-                                  cursor: deletingId === message.id ? "wait" : "pointer",
-                                  fontWeight: 700,
-                                  padding: 0
-                                }}
-                              >
-                                {deletingId === message.id ? "Suppression..." : "Supprimer"}
-                              </button>
-                            )}
-                          </article>
-                    );
-                  })}
-                </div>
-
-                <form className="chatComposer" onSubmit={sendMessage}>
-                  <textarea
-                    value={draft}
-                    onChange={(event) => setDraft(event.target.value)}
-                    placeholder={`Écrire à ${selectedContact.username || selectedContact.email}...`}
-                    maxLength={4000}
-                    rows={3}
-                  />
-                  <div>
-                    <span>{draft.length}/4000</span>
-                    <button disabled={!draft.trim() || sending} type="submit">
-                      {sending ? "Envoi..." : "Envoyer"}
-                    </button>
+                    <div className="chatHeaderActions">
+                      <button type="button" className="chatRefresh" onClick={refresh}>Actualiser</button>
+                      <button type="button" className="deleteConversation" onClick={deleteConversation} disabled={deletingConversation}>
+                        {deletingConversation ? "Suppression..." : "Supprimer"}
+                      </button>
+                    </div>
                   </div>
-                </form>
-              </>
-            ) : (
-              <div className="emptyConversation">
-                <strong>Aucun contact sélectionné</strong>
-                <span>Les administrateurs apparaîtront ici dès qu'ils seront disponibles.</span>
-              </div>
-            )}
-          </div>
-        </section>
+
+                  <div className="chatMessages">
+                    {conversation.length === 0 && (
+                      <div className="emptyConversation">
+                        <strong>Nouvelle conversation</strong>
+                        <span>Explique ton problème et un membre de l'équipe pourra te répondre ici.</span>
+                      </div>
+                    )}
+
+                    {conversation.map((message) => {
+                      const mine = message.sender_id === me?.id;
+                      return (
+                        <article key={message.id} className={mine ? "chatBubble mine" : "chatBubble"}>
+                          <p>{message.content}</p>
+                          <small>{new Date(message.created_at).toLocaleString("fr-FR")}</small>
+                        </article>
+                      );
+                    })}
+                  </div>
+
+                  <form className="chatComposer" onSubmit={sendMessage}>
+                    <textarea
+                      value={draft}
+                      onChange={(event) => setDraft(event.target.value)}
+                      placeholder={`Écrire à ${selectedContact.username || selectedContact.email}...`}
+                      maxLength={4000}
+                      rows={3}
+                    />
+                    <div>
+                      <span>{draft.length}/4000</span>
+                      <button disabled={!draft.trim() || sending} type="submit">
+                        {sending ? "Envoi..." : "Envoyer"}
+                      </button>
+                    </div>
+                  </form>
+                </>
+              ) : (
+                <div className="emptyConversation">
+                  <strong>Aucun contact sélectionné</strong>
+                  <span>Les administrateurs apparaîtront ici dès qu'ils seront disponibles.</span>
+                </div>
+              )}
+            </div>
+          </section>
+        </>
       )}
 
       {status && <div className="profileMessage error">{status}</div>}
