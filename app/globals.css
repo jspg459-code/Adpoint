@@ -1315,7 +1315,7 @@ body > .languageWidget{
    Direct child of <body>, anchored to the viewport and never to page content. */
 body > .globalPointsBalance{
   position:fixed!important;
-  top:calc(env(safe-area-inset-top, 0px) + 76px)!important;
+  top:calc(env(safe-area-inset-top, 0px) + 66px)!important;
   right:12px!important;
   bottom:auto!important;
   left:auto!important;
@@ -1329,7 +1329,7 @@ body > .globalPointsBalance{
 
 @media(max-width:760px){
   body > .globalPointsBalance{
-    top:calc(env(safe-area-inset-top, 0px) + 76px)!important;
+    top:calc(env(safe-area-inset-top, 0px) + 66px)!important;
     right:10px!important;
     max-width:calc(100vw - 20px)!important;
   }
