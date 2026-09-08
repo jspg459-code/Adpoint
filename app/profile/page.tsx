@@ -38,7 +38,8 @@ export default function ProfilePage() {
       setSavedUsername(name);
       setPoints(data.points_balance ?? 0);
       setChangedAt(data.username_changed_at ?? null);
-      setIsAdmin(user.email?.toLowerCase() === "jspg459@gmail.com" && data.role === "admin");
+      // Le Créateur et tous les administrateurs ne sont jamais soumis au délai de 7 jours.
+      setIsAdmin(data.role === "admin" || data.role === "creator");
     }
   }
 
