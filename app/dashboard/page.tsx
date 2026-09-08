@@ -107,8 +107,8 @@ export default function Dashboard(){
    </nav>
   </header>
 
-  <section className="dashHero">
-   <div><span className="eyebrow">BON RETOUR</span><h1>Bonjour {profile?.username||"👋"}</h1><p>Ton compte est connecté avec succès.</p></div>
+  <section className="dashHero" style={{paddingBottom:"12px"}}>
+   <div><span className="eyebrow">BON RETOUR</span><h1>Bonjour {profile?.username||"👋"}</h1></div>
   </section>
 
   {needsUsername&&<section className="profileBox"><h2>Choisis ton pseudo</h2><p className="muted">Il sera affiché à la place de ton adresse e-mail. Tu pourras le modifier plus tard depuis ton profil.</p>
