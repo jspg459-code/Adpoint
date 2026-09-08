@@ -1402,3 +1402,23 @@ body > .globalPointsBalance{
   .chatHeaderActions{width:100%;justify-content:space-between}
   .chatHeaderActions button{flex:1}
 }
+
+
+/* Unread messages: visible on every authenticated page */
+.globalUnreadNavBadge{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  min-width:20px!important;
+  height:20px!important;
+  margin-left:7px!important;
+  padding:0 6px!important;
+  border-radius:999px!important;
+  background:#ef5b62!important;
+  color:#fff!important;
+  font-size:11px!important;
+  font-weight:900!important;
+  line-height:1!important;
+  vertical-align:middle!important;
+  box-shadow:0 0 0 3px rgba(239,91,98,.12)!important;
+}
