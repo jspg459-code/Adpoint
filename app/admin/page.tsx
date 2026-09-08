@@ -41,6 +41,9 @@ export default function AdminPage() {
   const [message, setMessage] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [isOwner, setIsOwner] = useState(false);
+  const [onlineUsers, setOnlineUsers] = useState<Array<{ id: string; username: string | null; email: string; role: string | null; last_seen: string }>>([]);
+  const [showOnlineUsers, setShowOnlineUsers] = useState(false);
+  const [onlineLoading, setOnlineLoading] = useState(false);
 
   const [banDialogUser, setBanDialogUser] = useState<Profile | null>(null);
   const [banChoice, setBanChoice] = useState<BanChoice>("24h");
@@ -55,6 +58,53 @@ export default function AdminPage() {
   const [pointsDelta, setPointsDelta] = useState("");
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    if (!isOwner) return;
+    const timer = window.setInterval(() => void loadOnlineUsers(), 30000);
+    return () => window.clearInterval(timer);
+  }, [isOwner]);
+
+  async function loadOnlineUsers() {
+    setOnlineLoading(true);
+    try {
+      const cutoff = new Date(Date.now() - 90000).toISOString();
+      const { data: presence, error: presenceError } = await supabase
+        .from("user_presence")
+        .select("user_id,last_seen")
+        .gte("last_seen", cutoff)
+        .order("last_seen", { ascending: false });
+
+      if (presenceError) throw presenceError;
+
+      const ids = (presence || []).map((item: any) => item.user_id);
+      if (!ids.length) {
+        setOnlineUsers([]);
+        return;
+      }
+
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id,username,email,role")
+        .in("id", ids);
+
+      if (profilesError) throw profilesError;
+
+      const profileById = new Map((profiles || []).map((profile: any) => [profile.id, profile]));
+      setOnlineUsers(
+        (presence || [])
+          .map((item: any) => {
+            const profile = profileById.get(item.user_id);
+            return profile ? { ...profile, last_seen: item.last_seen } : null;
+          })
+          .filter(Boolean)
+      );
+    } catch (error: any) {
+      setMessage(error?.message || "Impossible de charger les personnes en ligne.");
+    } finally {
+      setOnlineLoading(false);
+    }
+  }
 
   async function load() {
     setLoading(true);
@@ -77,7 +127,8 @@ export default function AdminPage() {
       return;
     }
 
-    setIsOwner(user.email?.toLowerCase() === "jspg459@gmail.com");
+    const creator = me?.role === "creator";
+    setIsOwner(creator);
 
     const [{ data: profiles, error: profilesError }, { data: acts, error: activitiesError }] =
       await Promise.all([
@@ -94,6 +145,7 @@ export default function AdminPage() {
 
     setUsers(profiles || []);
     setActivities(acts || []);
+    if (creator) await loadOnlineUsers();
     setLoading(false);
   }
 
@@ -481,6 +533,20 @@ export default function AdminPage() {
         <article><small>Comptes suspendus</small><strong>{suspended}</strong></article>
         <article><small>AdPoints en circulation</small><strong>{totalPoints}</strong></article>
         <article><small>Activités</small><strong>{activities.length}</strong></article>
+        {isOwner && (
+          <button
+            type="button"
+            className="onlineStatCard"
+            onClick={() => {
+              setShowOnlineUsers(true);
+              void loadOnlineUsers();
+            }}
+          >
+            <small>Personnes en ligne</small>
+            <strong>{onlineLoading ? "..." : onlineUsers.length}</strong>
+            <span>Voir qui est en ligne →</span>
+          </button>
+        )}
       </section>
 
       {message && <div className="profileMessage error">{message}</div>}
@@ -686,6 +752,40 @@ export default function AdminPage() {
         </div>
       )}
 
+      {showOnlineUsers && isOwner && (
+        <div className="adminModalBackdrop" onClick={() => setShowOnlineUsers(false)}>
+          <div className="adminModal onlineUsersModal" onClick={(e) => e.stopPropagation()}>
+            <div className="onlineUsersHeader">
+              <div>
+                <h2>Personnes en ligne</h2>
+                <p className="muted">Utilisateurs actifs sur AdPoints au cours des 90 dernières secondes.</p>
+              </div>
+              <button type="button" onClick={() => setShowOnlineUsers(false)}>Fermer</button>
+            </div>
+
+            <div className="onlineUsersList">
+              {onlineUsers.length === 0 ? (
+                <div className="emptyConversation">
+                  <strong>Aucune personne en ligne</strong>
+                  <span>La liste se met automatiquement à jour.</span>
+                </div>
+              ) : (
+                onlineUsers.map((person) => (
+                  <article className="onlineUserItem" key={person.id}>
+                    <span className="onlineDot" aria-hidden="true" />
+                    <div>
+                      <strong>{person.username || "Sans pseudo"}</strong>
+                      <span>{person.role === "creator" ? "Créateur" : person.role === "admin" ? "Administrateur" : "Utilisateur"}</span>
+                    </div>
+                    <small>Actif maintenant</small>
+                  </article>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {banDialogUser && (
         <div className="adminModalBackdrop" onClick={closeBanDialog}>
           <div className="adminModal" onClick={(e) => e.stopPropagation()}>
@@ -743,6 +843,87 @@ export default function AdminPage() {
           </div>
         </div>
       )}
+      <style jsx>{`
+        .onlineStatCard {
+          appearance: none;
+          width: 100%;
+          min-height: 150px;
+          text-align: left;
+          cursor: pointer;
+          border: 1px solid rgba(104, 215, 160, 0.45);
+          border-radius: 28px;
+          padding: 28px 46px;
+          background: rgba(31, 47, 62, 0.72);
+          color: inherit;
+          transition: transform .18s ease, border-color .18s ease;
+        }
+        .onlineStatCard:hover {
+          transform: translateY(-2px);
+          border-color: rgba(104, 215, 160, 0.9);
+        }
+        .onlineStatCard small,
+        .onlineStatCard strong,
+        .onlineStatCard span {
+          display: block;
+        }
+        .onlineStatCard strong {
+          margin-top: 18px;
+          color: #72d6a7;
+          font-size: 2.1rem;
+        }
+        .onlineStatCard span {
+          margin-top: 10px;
+          color: #a8b6c5;
+          font-size: .92rem;
+        }
+        .onlineUsersModal {
+          width: min(680px, 94vw);
+          max-height: min(720px, 88vh);
+          overflow: auto;
+        }
+        .onlineUsersHeader {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 16px;
+          margin-bottom: 18px;
+        }
+        .onlineUsersHeader h2 { margin: 0 0 8px; }
+        .onlineUsersHeader button {
+          flex: 0 0 auto;
+          padding: 10px 16px;
+        }
+        .onlineUsersList {
+          display: grid;
+          gap: 10px;
+        }
+        .onlineUserItem {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          padding: 16px;
+          border: 1px solid rgba(116, 154, 186, .32);
+          border-radius: 18px;
+          background: rgba(16, 31, 45, .45);
+        }
+        .onlineUserItem div { min-width: 0; flex: 1; display: grid; gap: 4px; }
+        .onlineUserItem strong { color: #f1f5f9; }
+        .onlineUserItem span { color: #9eb0c0; font-size: .9rem; }
+        .onlineUserItem small { color: #75d8a8; white-space: nowrap; }
+        .onlineDot {
+          width: 11px;
+          height: 11px;
+          border-radius: 999px;
+          background: #3bd17f;
+          box-shadow: 0 0 0 5px rgba(59, 209, 127, .12);
+          flex: 0 0 auto;
+        }
+        @media (max-width: 700px) {
+          .onlineStatCard { min-height: 120px; padding: 24px; }
+          .onlineUsersHeader { align-items: center; }
+          .onlineUserItem small { display: none; }
+        }
+      `}</style>
     </main>
   );
 }
