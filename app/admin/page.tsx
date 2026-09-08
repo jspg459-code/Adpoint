@@ -142,13 +142,16 @@ export default function AdminPage() {
     setUsers(profiles || []);
 
     if (creator) {
-      const { data: rewards } = await supabase
-        .from("rewards")
-        .select("id,is_active");
+      const { data: settings, error: settingsError } = await supabase
+        .from("site_settings")
+        .select("shop_enabled")
+        .eq("key", "global")
+        .single();
 
-      const rewardList = rewards || [];
-      // La boutique est considérée ouverte dès qu'au moins une offre est active.
-      setShopEnabled(rewardList.length === 0 ? true : rewardList.some((reward: any) => reward.is_active));
+      if (settingsError) {
+        setMessage(settingsError.message || "Impossible de charger l’état de la boutique.");
+      }
+      setShopEnabled(settingsError ? true : settings?.shop_enabled !== false);
       await loadOnlineUsers();
     }
 
@@ -169,29 +172,14 @@ export default function AdminPage() {
     setShopToggleLoading(true);
     setMessage("");
 
-    // "id" est un UUID : ne jamais le comparer à une chaîne vide.
-    // On cible explicitement les offres existantes, ce qui évite l'erreur
-    // « invalid input syntax for type uuid ».
-    const { data: rewardRows, error: rewardsError } = await supabase
-      .from("rewards")
-      .select("id");
-
-    if (rewardsError) {
-      setShopToggleLoading(false);
-      setMessage(rewardsError.message || "Impossible de charger les offres de la boutique.");
-      return;
-    }
-
-    const rewardIds = (rewardRows || []).map((reward: any) => reward.id);
-    let updateError: any = null;
-
-    if (rewardIds.length > 0) {
-      const { error } = await supabase
-        .from("rewards")
-        .update({ is_active: nextEnabled })
-        .in("id", rewardIds);
-      updateError = error;
-    }
+    // Le réglage global est indépendant de l'état des offres.
+    // Désactiver la boutique ne désactive ni ne modifie les offres existantes.
+    const { data: updatedSettings, error: updateError } = await supabase
+      .from("site_settings")
+      .update({ shop_enabled: nextEnabled, updated_at: new Date().toISOString() })
+      .eq("key", "global")
+      .select("shop_enabled")
+      .single();
 
     setShopToggleLoading(false);
 
@@ -200,22 +188,10 @@ export default function AdminPage() {
       return;
     }
 
-    // Vérification finale : l'état affiché dans le panel doit correspondre
-    // exactement à l'état réellement enregistré dans les offres.
-    const { count: activeCount, error: verifyError } = await supabase
-      .from("rewards")
-      .select("id", { count: "exact", head: true })
-      .eq("is_active", true);
-
-    if (verifyError) {
-      setMessage(verifyError.message || "Modification effectuée mais impossible de vérifier l’état de la boutique.");
-      return;
-    }
-
-    const verifiedEnabled = (activeCount ?? 0) > 0;
+    const verifiedEnabled = updatedSettings?.shop_enabled === true;
     setShopEnabled(verifiedEnabled);
 
-    if (verifiedEnabled !== nextEnabled && rewardIds.length > 0) {
+    if (verifiedEnabled !== nextEnabled) {
       setMessage("L’état de la boutique n’a pas été enregistré correctement. Réessaie.");
       return;
     }
