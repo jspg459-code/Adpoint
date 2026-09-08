@@ -23,7 +23,11 @@ export function PointsProvider({ children }: { children: React.ReactNode }) {
   const [points, setPoints] = useState<number | null>(null);
 
   const refreshPoints = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    // getSession est volontairement utilisé ici pour ne jamais bloquer le flux
+    // d'authentification pendant une connexion.
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user;
+
     if (!user) {
       setPoints(null);
       publishPoints(null);
@@ -34,7 +38,7 @@ export function PointsProvider({ children }: { children: React.ReactNode }) {
       .from("profiles")
       .select("points_balance")
       .eq("id", user.id)
-      .single();
+      .maybeSingle();
 
     if (error) return;
 
@@ -48,7 +52,9 @@ export function PointsProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false;
 
     async function start() {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
+
       if (!user || cancelled) {
         setPoints(null);
         publishPoints(null);
@@ -85,13 +91,18 @@ export function PointsProvider({ children }: { children: React.ReactNode }) {
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onVisibility);
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session?.user) {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      // Ne jamais appeler Supabase directement dans le callback Auth : cela peut
+      // bloquer signInWithPassword. On diffère la synchronisation.
+      if (!session?.user || event === "SIGNED_OUT") {
         setPoints(null);
         publishPoints(null);
-      } else {
-        void refreshPoints();
+        return;
       }
+
+      window.setTimeout(() => {
+        void refreshPoints();
+      }, 0);
     });
 
     return () => {
