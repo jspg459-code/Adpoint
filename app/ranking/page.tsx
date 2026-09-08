@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
+import MessagesNavLink from "../components/MessagesNavLink";
 
 type Player = {
   rank: number;
@@ -92,6 +93,7 @@ export default function RankingPage() {
             Classement
           </Link>
           <Link href="/profile">Mon profil</Link>
+          <MessagesNavLink />
           {isAdmin && <Link href="/admin">Administration</Link>}
           <button onClick={logout}>Déconnexion</button>
         </nav>
