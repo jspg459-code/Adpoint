@@ -107,11 +107,10 @@ export default function AdminPage() {
 
     const { data, error } = await supabase.functions.invoke("admin-user-management", {
       body: {
-        // Une suspension utilise le même verrouillage sécurisé côté serveur qu'un blocage,
-        // mais sans date de fin : ban_until reste null et l'interface l'affiche comme Suspension.
-        action: action === "suspend" ? "ban" : action,
+        // La suspension est une action distincte du bannissement : pas de durée automatique.
+        action,
         userId: profile.id,
-        durationSeconds: action === "suspend" ? undefined : durationSeconds,
+        durationSeconds,
         reason: (action === "ban" || action === "suspend")
           ? (reason || (action === "suspend" ? "Suspension décidée par l’administrateur." : "Bannissement décidé par l’administrateur."))
           : undefined
