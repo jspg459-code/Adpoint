@@ -200,7 +200,26 @@ export default function AdminPage() {
       return;
     }
 
-    setShopEnabled(nextEnabled);
+    // Vérification finale : l'état affiché dans le panel doit correspondre
+    // exactement à l'état réellement enregistré dans les offres.
+    const { count: activeCount, error: verifyError } = await supabase
+      .from("rewards")
+      .select("id", { count: "exact", head: true })
+      .eq("is_active", true);
+
+    if (verifyError) {
+      setMessage(verifyError.message || "Modification effectuée mais impossible de vérifier l’état de la boutique.");
+      return;
+    }
+
+    const verifiedEnabled = (activeCount ?? 0) > 0;
+    setShopEnabled(verifiedEnabled);
+
+    if (verifiedEnabled !== nextEnabled && rewardIds.length > 0) {
+      setMessage("L’état de la boutique n’a pas été enregistré correctement. Réessaie.");
+      return;
+    }
+
     await logAudit(nextEnabled ? "creator_enable_shop" : "creator_disable_shop", {}, "/admin");
     setMessage(nextEnabled ? "Boutique d’échange activée." : "Boutique d’échange désactivée.");
   }
