@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 
@@ -29,6 +30,7 @@ function readLocalClears(userId: string): ConversationClear[] {
 }
 
 export default function GlobalMessagesButton() {
+  const pathname = usePathname();
   const [count, setCount] = useState(0);
   const [visible, setVisible] = useState(false);
 
@@ -96,7 +98,9 @@ export default function GlobalMessagesButton() {
     };
   }, []);
 
-  if (!visible) return null;
+  // L'enveloppe ne doit jamais apparaître sur les pages d'authentification.
+  const authPages = ["/login", "/signup", "/reset-password"];
+  if (authPages.includes(pathname) || !visible) return null;
 
   return (
     <>
@@ -115,7 +119,8 @@ export default function GlobalMessagesButton() {
       <style jsx>{`
         .globalMessagesButton {
           position: fixed;
-          top: max(18px, env(safe-area-inset-top));
+          /* Sous la barre d'état, dans la zone entourée à gauche. */
+          top: max(118px, calc(env(safe-area-inset-top) + 86px));
           left: 18px;
           z-index: 10000;
           display: inline-flex;
@@ -126,21 +131,21 @@ export default function GlobalMessagesButton() {
         }
 
         .globalEnvelopeIcon {
-          width: 54px;
-          height: 54px;
+          width: 58px;
+          height: 58px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          border-radius: 18px;
-          background: linear-gradient(145deg, #39c979, #1e9e5b);
-          border: 1px solid rgba(151, 255, 203, .55);
-          box-shadow: 0 10px 28px rgba(38, 192, 108, .32), inset 0 1px 0 rgba(255,255,255,.24);
+          border-radius: 19px;
+          background: linear-gradient(145deg, #42d887, #1fa860);
+          border: 1px solid rgba(171, 255, 215, .65);
+          box-shadow: 0 12px 30px rgba(38, 192, 108, .34), inset 0 1px 0 rgba(255,255,255,.28);
           transition: transform .18s ease, box-shadow .18s ease;
         }
 
         .globalEnvelopeIcon svg {
-          width: 29px;
-          height: 29px;
+          width: 31px;
+          height: 31px;
           stroke: #fff;
           stroke-width: 1.9;
           stroke-linecap: round;
@@ -150,7 +155,7 @@ export default function GlobalMessagesButton() {
         .globalMessagesButton:hover .globalEnvelopeIcon,
         .globalMessagesButton:active .globalEnvelopeIcon {
           transform: translateY(-2px) scale(1.03);
-          box-shadow: 0 14px 32px rgba(38, 192, 108, .42), inset 0 1px 0 rgba(255,255,255,.24);
+          box-shadow: 0 16px 34px rgba(38, 192, 108, .46), inset 0 1px 0 rgba(255,255,255,.28);
         }
 
         .globalMessagesCount {
@@ -172,18 +177,21 @@ export default function GlobalMessagesButton() {
 
         @media (max-width: 700px) {
           .globalMessagesButton {
-            top: max(12px, env(safe-area-inset-top));
-            left: 12px;
+            top: max(112px, calc(env(safe-area-inset-top) + 82px));
+            left: 14px;
           }
+
           .globalEnvelopeIcon {
-            width: 48px;
-            height: 48px;
-            border-radius: 16px;
+            width: 54px;
+            height: 54px;
+            border-radius: 18px;
           }
+
           .globalEnvelopeIcon svg {
-            width: 26px;
-            height: 26px;
+            width: 29px;
+            height: 29px;
           }
+
           .globalMessagesCount {
             min-width: 25px;
             height: 25px;
