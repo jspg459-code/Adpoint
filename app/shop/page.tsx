@@ -69,16 +69,23 @@ export default function ShopPage() {
 
       setProfile(data || null);
 
-      const [_, offersResult] = await Promise.all([
+      const [_, shopSettingsResult] = await Promise.all([
         refreshPoints(),
-        loadOffers(data?.role === "creator")
+        supabase
+          .from("site_settings")
+          .select("shop_enabled")
+          .eq("key", "global")
+          .single()
       ]);
 
-      // Boutique désactivée : aucun utilisateur standard ne doit pouvoir
-      // y accéder, même en ouvrant directement /shop.
-      if (data?.role !== "creator" && !offersResult.error && offersResult.rewards.length === 0) {
+      // Seul le réglage global contrôle l'accès. L'absence d'offre ne ferme
+      // jamais une boutique activée.
+      if (data?.role !== "creator" && !shopSettingsResult.error && shopSettingsResult.data?.shop_enabled === false) {
         router.replace("/dashboard");
+        return;
       }
+
+      await loadOffers(data?.role === "creator");
     })();
   }, [router, refreshPoints, loadOffers]);
 
