@@ -32,13 +32,16 @@ function readLocalClears(userId: string): ConversationClear[] {
 export default function GlobalMessagesButton() {
   const pathname = usePathname();
   const [count, setCount] = useState(0);
-  // L’enveloppe doit être visible immédiatement après la redirection vers une page privée.\n  // L’état de connexion et le compteur se mettent ensuite à jour en arrière-plan.\n  const [visible, setVisible] = useState(true);
+  // L’enveloppe doit être visible immédiatement après la redirection vers une page privée.
+  // L’état de connexion et le compteur se mettent ensuite à jour en arrière-plan.
+  const [visible, setVisible] = useState(true);
 
   useEffect(() => {
     let mounted = true;
 
     async function loadUnread() {
-      const { data: { session } } = await supabase.auth.getSession();\n      const user = session?.user ?? null;
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user ?? null;
 
       if (!user) {
         if (mounted) {
