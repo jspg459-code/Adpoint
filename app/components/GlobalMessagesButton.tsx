@@ -32,9 +32,6 @@ function readLocalClears(userId: string): ConversationClear[] {
 export default function GlobalMessagesButton() {
   const pathname = usePathname();
   const [count, setCount] = useState(0);
-  // L’enveloppe doit être visible immédiatement après la redirection vers une page privée.
-  // L’état de connexion et le compteur se mettent ensuite à jour en arrière-plan.
-  const [visible, setVisible] = useState(true);
 
   useEffect(() => {
     let mounted = true;
@@ -43,15 +40,7 @@ export default function GlobalMessagesButton() {
       const { data: { session } } = await supabase.auth.getSession();
       const user = session?.user ?? null;
 
-      if (!user) {
-        if (mounted) {
-          setVisible(false);
-          setCount(0);
-        }
-        return;
-      }
-
-      if (mounted) setVisible(true);
+      if (!user) {\n        if (mounted) setCount(0);\n        return;\n      }
 
       const [messagesResult, clearsResult] = await Promise.all([
         supabase
@@ -108,7 +97,7 @@ export default function GlobalMessagesButton() {
     "/reset-password"
   ]);
 
-  if (hiddenPaths.has(pathname) || !visible) return null;
+  if (hiddenPaths.has(pathname)) return null;
 
   return (
     <Link href="/messages" className="globalMessagesButton" aria-label="Ouvrir les messages">
