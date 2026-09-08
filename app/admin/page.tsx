@@ -42,6 +42,8 @@ export default function AdminPage() {
   const [onlineUsers, setOnlineUsers] = useState<Array<{ id: string; username: string | null; email: string; role: string | null; last_seen: string }>>([]);
   const [showOnlineUsers, setShowOnlineUsers] = useState(false);
   const [onlineLoading, setOnlineLoading] = useState(false);
+  const [shopEnabled, setShopEnabled] = useState(true);
+  const [shopToggleLoading, setShopToggleLoading] = useState(false);
 
   const [banDialogUser, setBanDialogUser] = useState<Profile | null>(null);
   const [banChoice, setBanChoice] = useState<BanChoice>("24h");
@@ -138,8 +140,50 @@ export default function AdminPage() {
     }
 
     setUsers(profiles || []);
-    if (creator) await loadOnlineUsers();
+
+    if (creator) {
+      const { data: rewards } = await supabase
+        .from("rewards")
+        .select("id,is_active");
+
+      const rewardList = rewards || [];
+      // La boutique est considérée ouverte dès qu'au moins une offre est active.
+      setShopEnabled(rewardList.length === 0 ? true : rewardList.some((reward: any) => reward.is_active));
+      await loadOnlineUsers();
+    }
+
     setLoading(false);
+  }
+
+  async function toggleShop() {
+    if (!isOwner || shopToggleLoading) return;
+
+    const nextEnabled = !shopEnabled;
+    const confirmed = window.confirm(
+      nextEnabled
+        ? "Activer la boutique d’échange pour tous les utilisateurs ?"
+        : "Désactiver la boutique d’échange pour tous les utilisateurs ? Les offres ne seront plus accessibles aux utilisateurs."
+    );
+    if (!confirmed) return;
+
+    setShopToggleLoading(true);
+    setMessage("");
+
+    const { error } = await supabase
+      .from("rewards")
+      .update({ is_active: nextEnabled })
+      .neq("id", "");
+
+    setShopToggleLoading(false);
+
+    if (error) {
+      setMessage(error.message || "Impossible de modifier l’état de la boutique.");
+      return;
+    }
+
+    setShopEnabled(nextEnabled);
+    await logAudit(nextEnabled ? "creator_enable_shop" : "creator_disable_shop", {}, "/admin");
+    setMessage(nextEnabled ? "Boutique d’échange activée." : "Boutique d’échange désactivée.");
   }
 
   async function manageUser(
@@ -565,6 +609,30 @@ export default function AdminPage() {
 
       {message && <div className="profileMessage error">{message}</div>}
 
+      {isOwner && (
+        <section className="adminSection shopControlSection">
+          <div className="adminSectionHead">
+            <div>
+              <h2>Boutique d’échange</h2>
+              <p>Contrôle l’accès à la boutique pour l’ensemble des utilisateurs du site.</p>
+            </div>
+            <span className={shopEnabled ? "shopStatus shopStatusOn" : "shopStatus shopStatusOff"}>
+              {shopEnabled ? "● Boutique activée" : "● Boutique désactivée"}
+            </span>
+          </div>
+          <div className="shopControlActions">
+            <button
+              type="button"
+              className={shopEnabled ? "shopToggleButton shopDisableButton" : "shopToggleButton"}
+              onClick={() => void toggleShop()}
+              disabled={shopToggleLoading}
+            >
+              {shopToggleLoading ? "Modification..." : shopEnabled ? "Désactiver la boutique" : "Activer la boutique"}
+            </button>
+          </div>
+        </section>
+      )}
+
       <section className="adminSection">
         <div className="adminSectionHead">
           <div>
@@ -843,6 +911,20 @@ export default function AdminPage() {
         </div>
       )}
       <style jsx>{`
+        .shopControlSection { margin-bottom: 28px; }
+        .shopControlActions { display: flex; justify-content: flex-start; margin-top: 18px; }
+        .shopStatus {
+          display: inline-flex; align-items: center; padding: 10px 16px;
+          border-radius: 999px; font-weight: 700; font-size: .92rem;
+        }
+        .shopStatusOn { color: #8be3b8; background: rgba(45, 190, 117, .12); border: 1px solid rgba(45, 190, 117, .35); }
+        .shopStatusOff { color: #ffb1b1; background: rgba(220, 70, 70, .12); border: 1px solid rgba(220, 70, 70, .35); }
+        .shopToggleButton {
+          border: 0; border-radius: 16px; padding: 14px 22px; font-weight: 800;
+          cursor: pointer; background: #36b875; color: #092117;
+        }
+        .shopDisableButton { background: #c94f57; color: white; }
+        .shopToggleButton:disabled { opacity: .65; cursor: wait; }
         .onlineStatCard {
           appearance: none;
           width: 100%;
