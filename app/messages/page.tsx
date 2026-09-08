@@ -6,11 +6,11 @@ import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
 import { logAudit } from "../lib/audit";
 
-type Staff = {
+type Contact = {
   id: string;
   username: string | null;
   email: string;
-  role: "admin" | "creator";
+  role: string | null;
 };
 
 type PrivateMessage = {
@@ -25,20 +25,18 @@ type PrivateMessage = {
 export default function MessagesPage() {
   const router = useRouter();
   const [me, setMe] = useState<{ id: string; role: string | null } | null>(null);
-  const [staff, setStaff] = useState<Staff[]>([]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
   const [messages, setMessages] = useState<PrivateMessage[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [draft, setDraft] = useState("");
   const [status, setStatus] = useState("");
   const [sending, setSending] = useState(false);
 
+  const isStaff = me?.role === "admin" || me?.role === "creator";
+
   useEffect(() => {
     void load();
-
-    const timer = window.setInterval(() => {
-      void refreshMessages();
-    }, 8000);
-
+    const timer = window.setInterval(() => void refresh(), 8000);
     return () => window.clearInterval(timer);
   }, []);
 
@@ -49,43 +47,97 @@ export default function MessagesPage() {
       return;
     }
 
-    const [{ data: profile }, { data: staffData, error: staffError }] = await Promise.all([
-      supabase.from("profiles").select("role").eq("id", user.id).single(),
-      supabase.rpc("list_contact_staff")
-    ]);
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
 
-    setMe({ id: user.id, role: profile?.role || null });
+    if (profileError) {
+      setStatus("Impossible de charger la messagerie.");
+      return;
+    }
+
+    const currentMe = { id: user.id, role: profile?.role || null };
+    setMe(currentMe);
+    await loadMessagesAndContacts(currentMe);
+  }
+
+  async function refresh() {
+    if (me) await loadMessagesAndContacts(me);
+  }
+
+  async function loadMessagesAndContacts(currentMe: { id: string; role: string | null }) {
+    const { data, error } = await supabase
+      .from("private_messages")
+      .select("id,sender_id,recipient_id,content,created_at,read_at")
+      .or(`sender_id.eq.${currentMe.id},recipient_id.eq.${currentMe.id}`)
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      setStatus(error.message || "Impossible de charger les messages.");
+      return;
+    }
+
+    const allMessages = (data || []) as PrivateMessage[];
+    setMessages(allMessages);
+
+    const staffMode = currentMe.role === "admin" || currentMe.role === "creator";
+
+    if (staffMode) {
+      // Un administrateur/créateur ne contacte pas l'administration :
+      // il voit uniquement les utilisateurs qui lui ont écrit.
+      const ids = Array.from(
+        new Set(
+          allMessages
+            .map((message) =>
+              message.sender_id === currentMe.id ? message.recipient_id : message.sender_id
+            )
+            .filter((id) => id && id !== currentMe.id)
+        )
+      );
+
+      if (!ids.length) {
+        setContacts([]);
+        setSelectedId("");
+        return;
+      }
+
+      const { data: users, error: usersError } = await supabase
+        .from("profiles")
+        .select("id,username,email,role")
+        .in("id", ids);
+
+      if (usersError) {
+        setStatus("Impossible de charger les utilisateurs ayant écrit à l'administration.");
+        return;
+      }
+
+      const list = ((users || []) as Contact[]).sort((a, b) => {
+        const aLast = Math.max(...allMessages.filter(m => m.sender_id === a.id || m.recipient_id === a.id).map(m => new Date(m.created_at).getTime()));
+        const bLast = Math.max(...allMessages.filter(m => m.sender_id === b.id || m.recipient_id === b.id).map(m => new Date(m.created_at).getTime()));
+        return bLast - aLast;
+      });
+
+      setContacts(list);
+      setSelectedId((current) => list.some((person) => person.id === current) ? current : list[0]?.id || "");
+      return;
+    }
+
+    // Utilisateur normal : il peut uniquement choisir un créateur ou administrateur.
+    const { data: staffData, error: staffError } = await supabase.rpc("list_contact_staff");
 
     if (staffError) {
       setStatus("Impossible de charger les contacts du support.");
       return;
     }
 
-    const list = (staffData || []) as Staff[];
-    setStaff(list);
-    if (list.length) setSelectedId((current) => current || list[0].id);
-
-    await loadMessages(user.id);
+    const list = (staffData || []) as Contact[];
+    setContacts(list);
+    setSelectedId((current) => current || list[0]?.id || "");
   }
 
-  async function loadMessages(userId?: string) {
-    const id = userId || me?.id;
-    if (!id) return;
-
-    const { data, error } = await supabase
-      .from("private_messages")
-      .select("id,sender_id,recipient_id,content,created_at,read_at")
-      .or(`sender_id.eq.${id},recipient_id.eq.${id}`)
-      .order("created_at", { ascending: true });
-
-    if (!error) setMessages((data || []) as PrivateMessage[]);
-  }
-
-  async function refreshMessages() {
-    await loadMessages();
-  }
-
-  const selectedStaff = staff.find((person) => person.id === selectedId);
+  const selectedContact = contacts.find((person) => person.id === selectedId);
 
   const conversation = useMemo(() => {
     if (!me || !selectedId) return [];
@@ -119,7 +171,7 @@ export default function MessagesPage() {
 
     setDraft("");
     await logAudit("private_message_sent", { recipient_id: selectedId }, "/messages");
-    await loadMessages(me.id);
+    await refresh();
     setSending(false);
   }
 
@@ -128,6 +180,11 @@ export default function MessagesPage() {
     await supabase.auth.signOut();
     router.replace("/");
   }
+
+  const title = isStaff ? "Messages reçus" : "Contacter l'administration";
+  const description = isStaff
+    ? "Retrouve ici les utilisateurs qui t'ont contacté. Sélectionne une conversation pour lire les messages et répondre."
+    : "Envoie un message privé directement au créateur ou à un administrateur. Tes échanges restent visibles uniquement par les participants concernés.";
 
   return (
     <main className="dash messagesPage">
@@ -138,53 +195,79 @@ export default function MessagesPage() {
           <Link href="/ranking">Classement</Link>
           <Link href="/profile">Mon profil</Link>
           <Link href="/messages" className="active">Messages</Link>
-          {(me?.role === "admin" || me?.role === "creator") && <Link href="/admin">Administration</Link>}
+          {isStaff && <Link href="/admin">Administration</Link>}
           <button onClick={logout}>Déconnexion</button>
         </nav>
       </header>
 
       <section className="messagesIntro">
-        <span className="eyebrow">BESOIN D'AIDE ?</span>
-        <h1>Contacter l'administration</h1>
-        <p>Envoie un message privé directement au créateur ou à un administrateur. Tes échanges restent visibles uniquement par les participants concernés.</p>
+        <span className="eyebrow">{isStaff ? "MESSAGERIE ADMIN" : "BESOIN D'AIDE ?"}</span>
+        <h1>{title}</h1>
+        <p>{description}</p>
       </section>
 
       <section className="messagesShell">
         <aside className="contactsPanel">
-          <h2>Contacts</h2>
-          {staff.length === 0 && <p className="muted">Aucun administrateur disponible pour le moment.</p>}
-          {staff.map((person) => (
+          <h2>{isStaff ? "Conversations reçues" : "Contacts"}</h2>
+
+          {contacts.length === 0 && (
+            <p className="muted">
+              {isStaff
+                ? "Aucun utilisateur ne t'a encore contacté."
+                : "Aucun administrateur disponible pour le moment."}
+            </p>
+          )}
+
+          {contacts.map((person) => (
             <button
               key={person.id}
               type="button"
               className={selectedId === person.id ? "contactItem selected" : "contactItem"}
               onClick={() => setSelectedId(person.id)}
             >
-              <span className="contactAvatar">{(person.username || person.email).slice(0, 1).toUpperCase()}</span>
+              <span className="contactAvatar">
+                {(person.username || person.email).slice(0, 1).toUpperCase()}
+              </span>
               <span>
                 <strong>{person.username || person.email}</strong>
-                <small>{person.role === "creator" ? "Créateur" : "Administrateur"}</small>
+                <small>
+                  {isStaff
+                    ? "Utilisateur"
+                    : person.role === "creator"
+                      ? "Créateur"
+                      : "Administrateur"}
+                </small>
               </span>
             </button>
           ))}
         </aside>
 
         <div className="chatPanel">
-          {selectedStaff ? (
+          {selectedContact ? (
             <>
               <div className="chatHeader">
                 <div>
-                  <strong>{selectedStaff.username || selectedStaff.email}</strong>
-                  <span>{selectedStaff.role === "creator" ? "Créateur AdPoints" : "Administrateur AdPoints"}</span>
+                  <strong>{selectedContact.username || selectedContact.email}</strong>
+                  <span>
+                    {isStaff
+                      ? "Conversation utilisateur"
+                      : selectedContact.role === "creator"
+                        ? "Créateur AdPoints"
+                        : "Administrateur AdPoints"}
+                  </span>
                 </div>
-                <button type="button" className="chatRefresh" onClick={refreshMessages}>Actualiser</button>
+                <button type="button" className="chatRefresh" onClick={refresh}>Actualiser</button>
               </div>
 
               <div className="chatMessages">
                 {conversation.length === 0 && (
                   <div className="emptyConversation">
                     <strong>Nouvelle conversation</strong>
-                    <span>Explique ton problème et un membre de l'équipe pourra te répondre ici.</span>
+                    <span>
+                      {isStaff
+                        ? "Cette conversation est prête. Tu peux répondre à l'utilisateur."
+                        : "Explique ton problème et un membre de l'équipe pourra te répondre ici."}
+                    </span>
                   </div>
                 )}
 
@@ -203,22 +286,28 @@ export default function MessagesPage() {
                 <textarea
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
-                  placeholder={`Écrire à ${selectedStaff.username || selectedStaff.email}...`}
+                  placeholder={isStaff
+                    ? `Répondre à ${selectedContact.username || selectedContact.email}...`
+                    : `Écrire à ${selectedContact.username || selectedContact.email}...`}
                   maxLength={4000}
                   rows={3}
                 />
                 <div>
                   <span>{draft.length}/4000</span>
                   <button disabled={!draft.trim() || sending} type="submit">
-                    {sending ? "Envoi..." : "Envoyer"}
+                    {sending ? "Envoi..." : isStaff ? "Répondre" : "Envoyer"}
                   </button>
                 </div>
               </form>
             </>
           ) : (
             <div className="emptyConversation">
-              <strong>Aucun contact sélectionné</strong>
-              <span>Les administrateurs apparaîtront ici dès qu'ils seront disponibles.</span>
+              <strong>{isStaff ? "Aucun message reçu" : "Aucun contact sélectionné"}</strong>
+              <span>
+                {isStaff
+                  ? "Les conversations apparaîtront ici lorsqu'un utilisateur te contactera."
+                  : "Les administrateurs apparaîtront ici dès qu'ils seront disponibles."}
+              </span>
             </div>
           )}
         </div>
