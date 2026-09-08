@@ -169,15 +169,34 @@ export default function AdminPage() {
     setShopToggleLoading(true);
     setMessage("");
 
-    const { error } = await supabase
+    // "id" est un UUID : ne jamais le comparer à une chaîne vide.
+    // On cible explicitement les offres existantes, ce qui évite l'erreur
+    // « invalid input syntax for type uuid ».
+    const { data: rewardRows, error: rewardsError } = await supabase
       .from("rewards")
-      .update({ is_active: nextEnabled })
-      .neq("id", "");
+      .select("id");
+
+    if (rewardsError) {
+      setShopToggleLoading(false);
+      setMessage(rewardsError.message || "Impossible de charger les offres de la boutique.");
+      return;
+    }
+
+    const rewardIds = (rewardRows || []).map((reward: any) => reward.id);
+    let updateError: any = null;
+
+    if (rewardIds.length > 0) {
+      const { error } = await supabase
+        .from("rewards")
+        .update({ is_active: nextEnabled })
+        .in("id", rewardIds);
+      updateError = error;
+    }
 
     setShopToggleLoading(false);
 
-    if (error) {
-      setMessage(error.message || "Impossible de modifier l’état de la boutique.");
+    if (updateError) {
+      setMessage(updateError.message || "Impossible de modifier l’état de la boutique.");
       return;
     }
 
@@ -609,30 +628,6 @@ export default function AdminPage() {
 
       {message && <div className="profileMessage error">{message}</div>}
 
-      {isOwner && (
-        <section className="adminSection shopControlSection">
-          <div className="adminSectionHead">
-            <div>
-              <h2>Boutique d’échange</h2>
-              <p>Contrôle l’accès à la boutique pour l’ensemble des utilisateurs du site.</p>
-            </div>
-            <span className={shopEnabled ? "shopStatus shopStatusOn" : "shopStatus shopStatusOff"}>
-              {shopEnabled ? "● Boutique activée" : "● Boutique désactivée"}
-            </span>
-          </div>
-          <div className="shopControlActions">
-            <button
-              type="button"
-              className={shopEnabled ? "shopToggleButton shopDisableButton" : "shopToggleButton"}
-              onClick={() => void toggleShop()}
-              disabled={shopToggleLoading}
-            >
-              {shopToggleLoading ? "Modification..." : shopEnabled ? "Désactiver la boutique" : "Activer la boutique"}
-            </button>
-          </div>
-        </section>
-      )}
-
       <section className="adminSection">
         <div className="adminSectionHead">
           <div>
@@ -759,6 +754,30 @@ export default function AdminPage() {
           })}
         </div>
       </section>
+
+      {isOwner && (
+        <section className="adminSection shopControlSection">
+          <div className="adminSectionHead">
+            <div>
+              <h2>Boutique d’échange</h2>
+              <p>Contrôle l’accès à la boutique pour l’ensemble des utilisateurs du site.</p>
+            </div>
+            <span className={shopEnabled ? "shopStatus shopStatusOn" : "shopStatus shopStatusOff"}>
+              {shopEnabled ? "● Boutique activée" : "● Boutique désactivée"}
+            </span>
+          </div>
+          <div className="shopControlActions">
+            <button
+              type="button"
+              className={shopEnabled ? "shopToggleButton shopDisableButton" : "shopToggleButton"}
+              onClick={() => void toggleShop()}
+              disabled={shopToggleLoading}
+            >
+              {shopToggleLoading ? "Modification..." : shopEnabled ? "Désactiver la boutique" : "Activer la boutique"}
+            </button>
+          </div>
+        </section>
+      )}
 
 
 
