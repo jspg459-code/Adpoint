@@ -1497,3 +1497,19 @@ body > .globalPointsBalance{
   .globalEnvelopeIcon svg{width:29px!important;height:29px!important}
   .globalMessagesCount{min-width:25px!important;height:25px!important;padding:0 7px!important;font-size:11px!important}
 }
+
+
+/* === FINAL FIX: envelope placement (dashboard only) ===
+   Keep it in the empty upper-left header zone, above the navigation row. */
+.globalMessagesButton{
+  top:calc(env(safe-area-inset-top, 0px) + 58px)!important;
+  left:14px!important;
+  bottom:auto!important;
+  right:auto!important;
+}
+@media(max-width:760px){
+  .globalMessagesButton{
+    top:calc(env(safe-area-inset-top, 0px) + 58px)!important;
+    left:14px!important;
+  }
+}
