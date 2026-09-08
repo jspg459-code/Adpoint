@@ -31,6 +31,7 @@ export default function MessagesPage() {
   const [draft, setDraft] = useState("");
   const [status, setStatus] = useState("");
   const [sending, setSending] = useState(false);
+  const [deletingId, setDeletingId] = useState("");
 
   const isStaff = me?.role === "admin" || me?.role === "creator";
 
@@ -175,6 +176,30 @@ export default function MessagesPage() {
     setSending(false);
   }
 
+  async function deleteMessage(message: PrivateMessage) {
+    if (!me || message.sender_id !== me.id || deletingId) return;
+    if (!window.confirm("Supprimer définitivement ce message ?")) return;
+
+    setDeletingId(message.id);
+    setStatus("");
+
+    const { error } = await supabase
+      .from("private_messages")
+      .delete()
+      .eq("id", message.id)
+      .eq("sender_id", me.id);
+
+    if (error) {
+      setStatus(error.message || "Impossible de supprimer le message.");
+      setDeletingId("");
+      return;
+    }
+
+    setMessages((current) => current.filter((item) => item.id !== message.id));
+    await logAudit("private_message_deleted", { message_id: message.id }, "/messages");
+    setDeletingId("");
+  }
+
   async function logout() {
     await logAudit("logout", {}, "/messages");
     await supabase.auth.signOut();
@@ -261,6 +286,25 @@ export default function MessagesPage() {
                           <article key={message.id} className={mine ? "chatBubble mine" : "chatBubble"}>
                             <p>{message.content}</p>
                             <small>{new Date(message.created_at).toLocaleString("fr-FR")}</small>
+                            {mine && (
+                              <button
+                                type="button"
+                                onClick={() => void deleteMessage(message)}
+                                disabled={deletingId === message.id}
+                                aria-label="Supprimer ce message"
+                                style={{
+                                  marginTop: "8px",
+                                  border: "0",
+                                  background: "transparent",
+                                  color: "#f38b8b",
+                                  cursor: deletingId === message.id ? "wait" : "pointer",
+                                  fontWeight: 700,
+                                  padding: 0
+                                }}
+                              >
+                                {deletingId === message.id ? "Suppression..." : "Supprimer"}
+                              </button>
+                            )}
                           </article>
                         );
                       })}
@@ -337,9 +381,28 @@ export default function MessagesPage() {
                     const mine = message.sender_id === me?.id;
                     return (
                       <article key={message.id} className={mine ? "chatBubble mine" : "chatBubble"}>
-                        <p>{message.content}</p>
-                        <small>{new Date(message.created_at).toLocaleString("fr-FR")}</small>
-                      </article>
+                            <p>{message.content}</p>
+                            <small>{new Date(message.created_at).toLocaleString("fr-FR")}</small>
+                            {mine && (
+                              <button
+                                type="button"
+                                onClick={() => void deleteMessage(message)}
+                                disabled={deletingId === message.id}
+                                aria-label="Supprimer ce message"
+                                style={{
+                                  marginTop: "8px",
+                                  border: "0",
+                                  background: "transparent",
+                                  color: "#f38b8b",
+                                  cursor: deletingId === message.id ? "wait" : "pointer",
+                                  fontWeight: 700,
+                                  padding: 0
+                                }}
+                              >
+                                {deletingId === message.id ? "Suppression..." : "Supprimer"}
+                              </button>
+                            )}
+                          </article>
                     );
                   })}
                 </div>
