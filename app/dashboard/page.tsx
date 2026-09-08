@@ -9,7 +9,6 @@ import { logAudit } from "../lib/audit";
 export default function Dashboard(){
  const router=useRouter();
  const [profile,setProfile]=useState<any>(null);
- const [activities,setActivities]=useState<any[]>([]);
  const [username,setUsername]=useState("");
  const [saving,setSaving]=useState(false);
  const [message,setMessage]=useState("");
@@ -26,13 +25,12 @@ export default function Dashboard(){
 
   // Une seule lecture du profil : le tableau de bord et le compteur global
   // utilisent tous les deux profiles.points_balance comme source de vérité.
-  const [{data:p,error:profileError},{data:a}]=await Promise.all([
+  const [{data:p,error:profileError}]=await Promise.all([
    supabase
     .from("profiles")
     .select("username,email,role,ban_until,is_suspended,ban_reason,points_balance")
     .eq("id",user.id)
     .single(),
-   supabase.from("activities").select("*").eq("is_active",true).order("created_at")
   ]);
 
   if(profileError || !p){
@@ -58,7 +56,7 @@ export default function Dashboard(){
   }
 
   setBlocked(null);
-  setProfile(currentProfile); setUsername(currentProfile?.username||""); setActivities(a||[]);
+  setProfile(currentProfile); setUsername(currentProfile?.username||"");
   // Tous les comptes ayant le rôle admin voient l'accès Administration.
   // Seul le propriétaire peut nommer d'autres administrateurs (contrôle côté panel/serveur).
   setIsAdmin(currentProfile?.role === "admin" || currentProfile?.role === "creator");
@@ -118,10 +116,13 @@ export default function Dashboard(){
   </section>}
 
   <section>
-   <h2>Activités disponibles</h2>
+   <h2>Boutique d’échange</h2>
    <div className="activityGrid">
-    {activities.map(a=><article className="activity" key={a.id}><h3>{a.title}</h3><p>{a.description}</p><b>+{a.points_reward} AdPoints</b><button onClick={()=>alert("Cette activité est prête à être intégrée au système de validation sécurisé.")}>Voir l’activité</button></article>)}
-    {!activities.length&&<p className="muted">Aucune activité disponible pour le moment.</p>}
+    <article className="activity exchangeShopCard">
+     <h3>🛍️ Parcourir la boutique</h3>
+     <p>Découvre les récompenses disponibles et échange tes AdPoints contre les offres proposées.</p>
+     <Link href="/shop" className="shopBrowseButton">Voir la boutique d’échange →</Link>
+    </article>
    </div>
   </section>
  </main>;
