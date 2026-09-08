@@ -1552,3 +1552,12 @@ body > .globalPointsBalance{
     font-size:10px!important;
   }
 }
+
+
+/* Keep the global envelope mounted: only visually hide it on public routes. */
+.globalMessagesShell{
+  display:contents;
+}
+.globalMessagesShellHidden{
+  display:none!important;
+}
