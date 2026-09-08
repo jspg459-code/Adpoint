@@ -190,6 +190,34 @@ export default function AdminPage() {
     return true;
   }
 
+  async function sendPasswordReset(profile: Profile) {
+    if (!isOwner) return;
+
+    const label = profile.username || profile.email;
+    if (!window.confirm(`Envoyer un email de réinitialisation du mot de passe à ${label} ?`)) return;
+
+    setBusyId(profile.id);
+    setMessage("");
+
+    const { data, error } = await supabase.functions.invoke("admin-user-management", {
+      body: { action: "send_password_reset", userId: profile.id }
+    });
+
+    setBusyId(null);
+
+    if (error || data?.error) {
+      setMessage(data?.error || error?.message || "Impossible d'envoyer l'email de réinitialisation.");
+      return;
+    }
+
+    await logAudit("owner_send_password_reset", {
+      target_user_id: profile.id,
+      target: label
+    }, "/admin");
+
+    setMessage(`Un email de réinitialisation du mot de passe a été envoyé à ${profile.email}.`);
+  }
+
   async function toggleAdmin(profile: Profile) {
     if (!isOwner) return;
 
@@ -497,6 +525,16 @@ export default function AdminPage() {
                   </span>
                   {user.role === "creator" && <span className="status activeStatus">Créateur</span>}
                   {user.role === "admin" && <span className="status activeStatus">Admin</span>}
+
+                  {isOwner && user.email?.toLowerCase() !== "jspg459@gmail.com" && (
+                    <button
+                      className="adminUserAction adminCompactAction"
+                      disabled={busy}
+                      onClick={() => sendPasswordReset(user)}
+                    >
+                      {busy ? "..." : "Réinitialiser MDP"}
+                    </button>
+                  )}
 
                   {!protectedFromCurrentAdmin && (
                     <Link
