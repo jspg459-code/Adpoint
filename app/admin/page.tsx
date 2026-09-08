@@ -422,7 +422,7 @@ export default function AdminPage() {
         <div className="adminSectionHead">
           <div>
             <h2>Utilisateurs</h2>
-            <p>Un seul bouton pour gérer le bannissement, avec durée personnalisée, BAN DÉF et débannissement.</p>
+            <p>Gère uniquement les bannissements et les débannissements des utilisateurs.</p>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             <Link href="/admin/logs" className="adminRefresh">Logs</Link>
@@ -604,7 +604,7 @@ export default function AdminPage() {
         <div className="adminModalBackdrop" onClick={closeBanDialog}>
           <div className="adminModal" onClick={(e) => e.stopPropagation()}>
             <h2>🚫 Gérer {banDialogUser.username || banDialogUser.email}</h2>
-            <p className="muted">Choisis une durée dans la liste, ou sélectionne BAN DÉF.</p>
+            <p className="muted">Choisis la durée du bannissement. Les comptes peuvent ensuite être débannis.</p>
 
             <label>Durée du bannissement</label>
             <select
