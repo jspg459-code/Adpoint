@@ -32,12 +32,17 @@ export default function ShopPage() {
 
   const isCreator = profile?.role === "creator";
 
-  const loadOffers = useCallback(async () => {
+  const loadOffers = useCallback(async (showAll = false) => {
     setLoadingOffers(true);
-    const { data, error } = await supabase
+
+    let query = supabase
       .from("rewards")
       .select("id,title,description,points_cost,stock,is_active,created_by")
       .order("created_at", { ascending: false });
+
+    if (!showAll) query = query.eq("is_active", true);
+
+    const { data, error } = await query;
 
     if (!error) setOffers((data || []) as Reward[]);
     setLoadingOffers(false);
@@ -60,7 +65,7 @@ export default function ShopPage() {
         .single();
 
       setProfile(data || null);
-      await Promise.all([refreshPoints(), loadOffers()]);
+      await Promise.all([refreshPoints(), loadOffers(data?.role === "creator")]);
     })();
   }, [router, refreshPoints, loadOffers]);
 
@@ -90,7 +95,7 @@ export default function ShopPage() {
       return;
     }
 
-    await loadOffers();
+    await loadOffers(true);
   }
 
   async function createOffer(event: FormEvent<HTMLFormElement>) {
@@ -130,7 +135,7 @@ export default function ShopPage() {
 
     event.currentTarget.reset();
     setShowCreatorForm(false);
-    await loadOffers();
+    await loadOffers(true);
   }
 
   return (
