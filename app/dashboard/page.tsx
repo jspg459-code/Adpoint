@@ -50,17 +50,25 @@ export default function Dashboard(){
   const {data:{user}}=await supabase.auth.getUser();
   if(!user){router.replace("/login");return;}
 
-  const [{data:p},{data:balanceRow},{data:a}]=await Promise.all([
-   supabase.from("profiles").select("username,email,role,ban_until,is_suspended,ban_reason").eq("id",user.id).single(),
-   supabase.from("profiles").select("points_balance").eq("id",user.id).single(),
+  // Une seule lecture du profil : le tableau de bord et le compteur global
+  // utilisent tous les deux profiles.points_balance comme source de vérité.
+  const [{data:p,error:profileError},{data:a}]=await Promise.all([
+   supabase
+    .from("profiles")
+    .select("username,email,role,ban_until,is_suspended,ban_reason,points_balance")
+    .eq("id",user.id)
+    .single(),
    supabase.from("activities").select("*").eq("is_active",true).order("created_at")
   ]);
 
-  // Le solde affiché dans le tableau de bord utilise exactement la même
-  // source de vérité que le compteur global fixe.
+  if(profileError || !p){
+   setProfile(null);
+   return;
+  }
+
   const currentProfile={
-   ...(p||{}),
-   points_balance:Number(balanceRow?.points_balance??0)
+   ...p,
+   points_balance:Number(p.points_balance ?? 0)
   };
 
   const activeBan=currentProfile?.ban_until && new Date(currentProfile.ban_until).getTime()>Date.now();
