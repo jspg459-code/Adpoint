@@ -227,42 +227,53 @@ export default function MessagesPage() {
     setDeletingConversation(true);
     setStatus("");
 
+    const otherUserId = selectedId;
     const now = new Date().toISOString();
-    const { error } = await supabase
+    const { data: savedClear, error } = await supabase
       .from("private_conversation_clears")
       .upsert(
         {
           user_id: me.id,
-          other_user_id: selectedId,
+          other_user_id: otherUserId,
           cleared_at: now
         },
         { onConflict: "user_id,other_user_id" }
-      );
+      )
+      .select("other_user_id,cleared_at")
+      .single();
 
-    if (error) {
-      setStatus(error.message || "Impossible de supprimer la conversation.");
+    if (error || !savedClear) {
+      setStatus(error?.message || "La suppression n'a pas été enregistrée. Réessaie.");
       setDeletingConversation(false);
       return;
     }
 
+    // Suppression immédiate de l'affichage local.
     setClears((current) => [
-      ...current.filter((item) => item.other_user_id !== selectedId),
-      { other_user_id: selectedId, cleared_at: now }
+      ...current.filter((item) => item.other_user_id !== otherUserId),
+      savedClear as ConversationClear
     ]);
     setMessages((current) =>
       current.filter((message) =>
         !(
-          (message.sender_id === me.id && message.recipient_id === selectedId) ||
-          (message.sender_id === selectedId && message.recipient_id === me.id)
+          (message.sender_id === me.id && message.recipient_id === otherUserId) ||
+          (message.sender_id === otherUserId && message.recipient_id === me.id)
         )
       )
     );
 
-    await logAudit("private_conversation_cleared", { other_user_id: selectedId }, "/messages");
+    // Pour le créateur/admin, l'utilisateur disparaît immédiatement de la boîte
+    // de réception puisque toute sa conversation a été supprimée de ce côté.
+    if (isStaff) {
+      setContacts((current) => current.filter((person) => person.id !== otherUserId));
+      setSelectedId("");
+    }
 
-    // Pour le staff on retourne à la liste. Pour l'utilisateur, le contact
-    // reste disponible mais la conversation devient vide.
-    if (isStaff) setSelectedId("");
+    await logAudit("private_conversation_cleared", { other_user_id: otherUserId }, "/messages");
+
+    // Vérification avec la base pour éviter qu'un rafraîchissement fasse réapparaître
+    // les anciens messages.
+    await refresh();
     setDeletingConversation(false);
   }
 
