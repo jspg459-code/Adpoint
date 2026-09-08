@@ -142,6 +142,28 @@ export default function MessagesPage() {
 
     const staffMode = currentMe.role === "admin" || currentMe.role === "creator";
 
+    // Le créateur peut contacter directement tous les comptes du site.
+    if (currentMe.role === "creator") {
+      const { data: users, error: usersError } = await supabase
+        .from("profiles")
+        .select("id,username,email,role")
+        .neq("id", currentMe.id)
+        .order("username", { ascending: true });
+
+      if (usersError) {
+        setStatus("Impossible de charger les utilisateurs.");
+        return;
+      }
+
+      const list = ((users || []) as Contact[]).sort((a, b) =>
+        (a.username || a.email).localeCompare(b.username || b.email, "fr")
+      );
+      setContacts(list);
+      setSelectedId((current) => list.some((person) => person.id === current) ? current : "");
+      return;
+    }
+
+    // Les administrateurs voient uniquement les utilisateurs qui leur ont écrit.
     if (staffMode) {
       // Les admins/créateurs voient uniquement les utilisateurs qui leur ont écrit.
       const ids = Array.from(
@@ -387,8 +409,8 @@ export default function MessagesPage() {
         <section className="messagesShell staffMessagesShell">
           {!selectedContact ? (
             <div className="staffInbox">
-              <h1>Messages reçus</h1>
-              <p className="muted">Sélectionne un utilisateur pour ouvrir sa conversation.</p>
+              <h1>{me?.role === "creator" ? "Messagerie" : "Messages reçus"}</h1>
+              <p className="muted">{me?.role === "creator" ? "Sélectionne n’importe quel utilisateur pour démarrer ou ouvrir une conversation." : "Sélectionne un utilisateur pour ouvrir sa conversation."}</p>
 
               {contacts.length === 0 ? (
                 <div className="chatPanel staffEmpty">
