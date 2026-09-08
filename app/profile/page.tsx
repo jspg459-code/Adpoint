@@ -115,6 +115,7 @@ export default function ProfilePage() {
         <Link href="/dashboard" className="textBrand">Ad<span>Points</span></Link>
         <nav className="cleanTextNav">
           <Link href="/dashboard">Tableau de bord</Link>
+          <Link href="/ranking">Classement</Link>
           <Link href="/profile" className="active">Mon profil</Link>
           {isAdmin && <Link href="/admin">Administration</Link>}
           <button onClick={logout}>Déconnexion</button>
