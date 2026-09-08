@@ -206,112 +206,163 @@ export default function MessagesPage() {
         <p>{description}</p>
       </section>
 
-      <section className="messagesShell">
-        <aside className="contactsPanel">
-          <h2>{isStaff ? "Conversations reçues" : "Contacts"}</h2>
-
-          {contacts.length === 0 && (
-            <p className="muted">
-              {isStaff
-                ? "Aucun utilisateur ne t'a encore contacté."
-                : "Aucun administrateur disponible pour le moment."}
-            </p>
-          )}
-
-          {contacts.map((person) => (
-            <button
-              key={person.id}
-              type="button"
-              className={selectedId === person.id ? "contactItem selected" : "contactItem"}
-              onClick={() => setSelectedId(person.id)}
-            >
-              <span className="contactAvatar">
-                {(person.username || person.email).slice(0, 1).toUpperCase()}
-              </span>
-              <span>
-                <strong>{person.username || person.email}</strong>
-                <small>
-                  {isStaff
-                    ? "Utilisateur"
-                    : person.role === "creator"
-                      ? "Créateur"
-                      : "Administrateur"}
-                </small>
-              </span>
-            </button>
-          ))}
-        </aside>
-
-        <div className="chatPanel">
-          {selectedContact ? (
-            <>
-              <div className="chatHeader">
-                <div>
-                  <strong>{selectedContact.username || selectedContact.email}</strong>
-                  <span>
-                    {isStaff
-                      ? "Conversation utilisateur"
-                      : selectedContact.role === "creator"
-                        ? "Créateur AdPoints"
-                        : "Administrateur AdPoints"}
-                  </span>
-                </div>
-                <button type="button" className="chatRefresh" onClick={refresh}>Actualiser</button>
+      {isStaff ? (
+        <section className="messagesShell staffMessagesShell">
+          {contacts.length === 0 ? (
+            <div className="chatPanel">
+              <div className="emptyConversation">
+                <strong>Aucun message reçu</strong>
+                <span>Les messages des utilisateurs apparaîtront ici dès qu'ils te contacteront.</span>
               </div>
-
-              <div className="chatMessages">
-                {conversation.length === 0 && (
-                  <div className="emptyConversation">
-                    <strong>Nouvelle conversation</strong>
-                    <span>
-                      {isStaff
-                        ? "Cette conversation est prête. Tu peux répondre à l'utilisateur."
-                        : "Explique ton problème et un membre de l'équipe pourra te répondre ici."}
-                    </span>
-                  </div>
-                )}
-
-                {conversation.map((message) => {
-                  const mine = message.sender_id === me?.id;
-                  return (
-                    <article key={message.id} className={mine ? "chatBubble mine" : "chatBubble"}>
-                      <p>{message.content}</p>
-                      <small>{new Date(message.created_at).toLocaleString("fr-FR")}</small>
-                    </article>
-                  );
-                })}
-              </div>
-
-              <form className="chatComposer" onSubmit={sendMessage}>
-                <textarea
-                  value={draft}
-                  onChange={(event) => setDraft(event.target.value)}
-                  placeholder={isStaff
-                    ? `Répondre à ${selectedContact.username || selectedContact.email}...`
-                    : `Écrire à ${selectedContact.username || selectedContact.email}...`}
-                  maxLength={4000}
-                  rows={3}
-                />
-                <div>
-                  <span>{draft.length}/4000</span>
-                  <button disabled={!draft.trim() || sending} type="submit">
-                    {sending ? "Envoi..." : isStaff ? "Répondre" : "Envoyer"}
-                  </button>
-                </div>
-              </form>
-            </>
-          ) : (
-            <div className="emptyConversation">
-              <strong>{isStaff ? "Aucun message reçu" : "Aucun contact sélectionné"}</strong>
-              <span>
-                {isStaff
-                  ? "Les conversations apparaîtront ici lorsqu'un utilisateur te contactera."
-                  : "Les administrateurs apparaîtront ici dès qu'ils seront disponibles."}
-              </span>
             </div>
+          ) : (
+            <>
+              <aside className="contactsPanel">
+                <h2>Messages reçus</h2>
+                {contacts.map((person) => (
+                  <button
+                    key={person.id}
+                    type="button"
+                    className={selectedId === person.id ? "contactItem selected" : "contactItem"}
+                    onClick={() => setSelectedId(person.id)}
+                  >
+                    <span className="contactAvatar">
+                      {(person.username || person.email).slice(0, 1).toUpperCase()}
+                    </span>
+                    <span>
+                      <strong>{person.username || person.email}</strong>
+                      <small>Utilisateur</small>
+                    </span>
+                  </button>
+                ))}
+              </aside>
+
+              <div className="chatPanel">
+                {selectedContact && (
+                  <>
+                    <div className="chatHeader">
+                      <div>
+                        <strong>{selectedContact.username || selectedContact.email}</strong>
+                        <span>Conversation utilisateur</span>
+                      </div>
+                      <button type="button" className="chatRefresh" onClick={refresh}>Actualiser</button>
+                    </div>
+
+                    <div className="chatMessages">
+                      {conversation.map((message) => {
+                        const mine = message.sender_id === me?.id;
+                        return (
+                          <article key={message.id} className={mine ? "chatBubble mine" : "chatBubble"}>
+                            <p>{message.content}</p>
+                            <small>{new Date(message.created_at).toLocaleString("fr-FR")}</small>
+                          </article>
+                        );
+                      })}
+                    </div>
+
+                    <form className="chatComposer" onSubmit={sendMessage}>
+                      <textarea
+                        value={draft}
+                        onChange={(event) => setDraft(event.target.value)}
+                        placeholder={`Répondre à ${selectedContact.username || selectedContact.email}...`}
+                        maxLength={4000}
+                        rows={3}
+                      />
+                      <div>
+                        <span>{draft.length}/4000</span>
+                        <button disabled={!draft.trim() || sending} type="submit">
+                          {sending ? "Envoi..." : "Répondre"}
+                        </button>
+                      </div>
+                    </form>
+                  </>
+                )}
+              </div>
+            </>
           )}
-        </div>
-      </section>
+        </section>
+      ) : (
+        <section className="messagesShell">
+          <aside className="contactsPanel">
+            <h2>Contacts</h2>
+
+            {contacts.length === 0 && (
+              <p className="muted">Aucun administrateur disponible pour le moment.</p>
+            )}
+
+            {contacts.map((person) => (
+              <button
+                key={person.id}
+                type="button"
+                className={selectedId === person.id ? "contactItem selected" : "contactItem"}
+                onClick={() => setSelectedId(person.id)}
+              >
+                <span className="contactAvatar">
+                  {(person.username || person.email).slice(0, 1).toUpperCase()}
+                </span>
+                <span>
+                  <strong>{person.username || person.email}</strong>
+                  <small>{person.role === "creator" ? "Créateur" : "Administrateur"}</small>
+                </span>
+              </button>
+            ))}
+          </aside>
+
+          <div className="chatPanel">
+            {selectedContact ? (
+              <>
+                <div className="chatHeader">
+                  <div>
+                    <strong>{selectedContact.username || selectedContact.email}</strong>
+                    <span>{selectedContact.role === "creator" ? "Créateur AdPoints" : "Administrateur AdPoints"}</span>
+                  </div>
+                  <button type="button" className="chatRefresh" onClick={refresh}>Actualiser</button>
+                </div>
+
+                <div className="chatMessages">
+                  {conversation.length === 0 && (
+                    <div className="emptyConversation">
+                      <strong>Nouvelle conversation</strong>
+                      <span>Explique ton problème et un membre de l'équipe pourra te répondre ici.</span>
+                    </div>
+                  )}
+
+                  {conversation.map((message) => {
+                    const mine = message.sender_id === me?.id;
+                    return (
+                      <article key={message.id} className={mine ? "chatBubble mine" : "chatBubble"}>
+                        <p>{message.content}</p>
+                        <small>{new Date(message.created_at).toLocaleString("fr-FR")}</small>
+                      </article>
+                    );
+                  })}
+                </div>
+
+                <form className="chatComposer" onSubmit={sendMessage}>
+                  <textarea
+                    value={draft}
+                    onChange={(event) => setDraft(event.target.value)}
+                    placeholder={`Écrire à ${selectedContact.username || selectedContact.email}...`}
+                    maxLength={4000}
+                    rows={3}
+                  />
+                  <div>
+                    <span>{draft.length}/4000</span>
+                    <button disabled={!draft.trim() || sending} type="submit">
+                      {sending ? "Envoi..." : "Envoyer"}
+                    </button>
+                  </div>
+                </form>
+              </>
+            ) : (
+              <div className="emptyConversation">
+                <strong>Aucun contact sélectionné</strong>
+                <span>Les administrateurs apparaîtront ici dès qu'ils seront disponibles.</span>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {status && <div className="profileMessage error">{status}</div>}
     </main>
