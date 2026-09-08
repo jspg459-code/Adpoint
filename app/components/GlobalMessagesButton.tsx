@@ -40,7 +40,10 @@ export default function GlobalMessagesButton() {
       const { data: { session } } = await supabase.auth.getSession();
       const user = session?.user ?? null;
 
-      if (!user) {\n        if (mounted) setCount(0);\n        return;\n      }
+      if (!user) {
+        if (mounted) setCount(0);
+        return;
+      }
 
       const [messagesResult, clearsResult] = await Promise.all([
         supabase
@@ -88,28 +91,38 @@ export default function GlobalMessagesButton() {
     };
   }, []);
 
-  // L'enveloppe est réservée aux pages internes de l'application.
-  // Elle ne doit jamais apparaître sur l'accueil ni sur les pages publiques/authentification.
-  const hiddenPaths = new Set([
-    "/",
-    "/login",
-    "/signup",
-    "/reset-password"
-  ]);
+  const publicRoute =
+    pathname === "/" ||
+    pathname === "/login" ||
+    pathname === "/signup" ||
+    pathname === "/reset-password";
 
-  if (hiddenPaths.has(pathname)) return null;
-
+  /*
+   * On laisse le bouton monté immédiatement dans le DOM.
+   * Les pages publiques le cachent uniquement via CSS, ce qui évite
+   * le délai de montage/hydratation lors de la navigation après connexion.
+   */
   return (
-    <Link href="/messages" className="globalMessagesButton" aria-label="Ouvrir les messages">
-      <span className="globalEnvelopeIcon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none">
-          <path d="M3.5 6.5A2.5 2.5 0 0 1 6 4h12a2.5 2.5 0 0 1 2.5 2.5v11A2.5 2.5 0 0 1 18 20H6a2.5 2.5 0 0 1-2.5-2.5v-11Z" />
-          <path d="m4.5 6 6.3 5.1a1.9 1.9 0 0 0 2.4 0L19.5 6" />
-        </svg>
-      </span>
-      {count > 0 && (
-        <span className="globalMessagesCount">{count > 99 ? "99+" : count}</span>
-      )}
-    </Link>
+    <div
+      className={"globalMessagesShell" + (publicRoute ? " globalMessagesShellHidden" : "")}
+      aria-hidden={publicRoute}
+    >
+      <Link
+        href="/messages"
+        className="globalMessagesButton"
+        aria-label="Ouvrir les messages"
+        tabIndex={publicRoute ? -1 : 0}
+      >
+        <span className="globalEnvelopeIcon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M3.5 6.5A2.5 2.5 0 0 1 6 4h12a2.5 2.5 0 0 1 2.5 2.5v11A2.5 2.5 0 0 1 18 20H6a2.5 2.5 0 0 1-2.5-2.5v-11Z" />
+            <path d="m4.5 6 6.3 5.1a1.9 1.9 0 0 0 2.4 0L19.5 6" />
+          </svg>
+        </span>
+        {count > 0 && (
+          <span className="globalMessagesCount">{count > 99 ? "99+" : count}</span>
+        )}
+      </Link>
+    </div>
   );
 }
