@@ -14,6 +14,8 @@ export default function Dashboard(){
  const [message,setMessage]=useState("");
  const [isAdmin,setIsAdmin]=useState(false);
  const [blocked,setBlocked]=useState<{reason:string;type:"suspended"|"banned"}|null>(null);
+ const [shopEnabled,setShopEnabled]=useState(false);
+ const [shopChecked,setShopChecked]=useState(false);
 
  useEffect(()=>{
   void load();
@@ -60,6 +62,17 @@ export default function Dashboard(){
   // Tous les comptes ayant le rôle admin voient l'accès Administration.
   // Seul le propriétaire peut nommer d'autres administrateurs (contrôle côté panel/serveur).
   setIsAdmin(currentProfile?.role === "admin" || currentProfile?.role === "creator");
+
+  // La boutique est ouverte uniquement lorsqu'au moins une offre est active.
+  // Le même état est utilisé par le panel créateur, le tableau de bord et la page boutique.
+  const { data: activeRewards, error: shopError } = await supabase
+   .from("rewards")
+   .select("id")
+   .eq("is_active", true)
+   .limit(1);
+
+  setShopEnabled(!shopError && (activeRewards || []).length > 0);
+  setShopChecked(true);
  }
 
  async function save(){
@@ -115,15 +128,17 @@ export default function Dashboard(){
    {message&&<div className="notice">{message}</div>}
   </section>}
 
-  <section>
-   <h2>Boutique d’échange</h2>
-   <div className="activityGrid">
-    <article className="activity exchangeShopCard">
-     <h3>🛍️ Parcourir la boutique</h3>
-     <p>Découvre les récompenses disponibles et échange tes AdPoints contre les offres proposées.</p>
-     <Link href="/shop" className="shopBrowseButton">Voir la boutique d’échange →</Link>
-    </article>
-   </div>
-  </section>
+  {shopChecked && shopEnabled && (
+   <section>
+    <h2>Boutique d’échange</h2>
+    <div className="activityGrid">
+     <article className="activity exchangeShopCard">
+      <h3>🛍️ Parcourir la boutique</h3>
+      <p>Découvre les récompenses disponibles et échange tes AdPoints contre les offres proposées.</p>
+      <Link href="/shop" className="shopBrowseButton">Voir la boutique d’échange →</Link>
+     </article>
+    </div>
+   </section>
+  )}
  </main>;
 }
