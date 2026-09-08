@@ -200,16 +200,22 @@ export default function MessagesPage() {
         </nav>
       </header>
 
-      <section className="messagesIntro">
-        <span className="eyebrow">{isStaff ? "MESSAGERIE ADMIN" : "BESOIN D'AIDE ?"}</span>
-        <h1>{title}</h1>
-        <p>{description}</p>
-      </section>
+      {!isStaff && (
+        <section className="messagesIntro">
+          <span className="eyebrow">BESOIN D'AIDE ?</span>
+          <h1>{title}</h1>
+          <p>{description}</p>
+        </section>
+      )}
 
       {isStaff ? (
-        <section className="messagesShell staffMessagesShell">
+        <section
+          className="messagesShell staffMessagesShell"
+          style={{ display: "block", minHeight: "auto", paddingTop: "28px" }}
+        >
+          <h1 style={{ margin: "0 0 18px", fontSize: "clamp(32px,5vw,56px)" }}>Messages reçus</h1>
           {contacts.length === 0 ? (
-            <div className="chatPanel">
+            <div className="chatPanel" style={{ minHeight: "420px" }}>
               <div className="emptyConversation">
                 <strong>Aucun message reçu</strong>
                 <span>Les messages des utilisateurs apparaîtront ici dès qu'ils te contacteront.</span>
