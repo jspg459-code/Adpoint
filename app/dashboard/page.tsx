@@ -14,6 +14,7 @@ export default function Dashboard(){
  const [saving,setSaving]=useState(false);
  const [message,setMessage]=useState("");
  const [isAdmin,setIsAdmin]=useState(false);
+ const [blocked,setBlocked]=useState<{reason:string;type:"suspended"|"banned"}|null>(null);
 
  useEffect(()=>{load();},[]);
 
@@ -22,17 +23,22 @@ export default function Dashboard(){
   if(!user){router.replace("/login");return;}
 
   const [{data:p},{data:a}]=await Promise.all([
-   supabase.from("profiles").select("username,email,points_balance,role,ban_until,is_suspended").eq("id",user.id).single(),
+   supabase.from("profiles").select("username,email,points_balance,role,ban_until,is_suspended,ban_reason").eq("id",user.id).single(),
    supabase.from("activities").select("*").eq("is_active",true).order("created_at")
   ]);
 
   const activeBan=p?.ban_until && new Date(p.ban_until).getTime()>Date.now();
-  if(activeBan || (p?.is_suspended && !p?.ban_until)){
-   await supabase.auth.signOut();
-   router.replace("/login");
+  const activeSuspension=!!p?.is_suspended && !p?.ban_until;
+  if(activeBan || activeSuspension){
+   setBlocked({
+    type: activeSuspension ? "suspended" : "banned",
+    reason: p?.ban_reason || (activeSuspension ? "Ton compte a été suspendu par l'administration." : "Ton compte est actuellement banni.")
+   });
+   setProfile(p);
    return;
   }
 
+  setBlocked(null);
   setProfile(p); setUsername(p?.username||""); setActivities(a||[]);
   // Tous les comptes ayant le rôle admin voient l'accès Administration.
   // Seul le propriétaire peut nommer d'autres administrateurs (contrôle côté panel/serveur).
@@ -55,6 +61,20 @@ export default function Dashboard(){
  async function logout(){await logAudit("logout",{},"/dashboard");await supabase.auth.signOut();router.replace("/");}
 
  const needsUsername=!profile?.username?.trim();
+
+ if(blocked){
+  return <main className="dash">
+   <section className="dashHero" style={{minHeight:"70vh",display:"flex",alignItems:"center",justifyContent:"center"}}>
+    <div className="profileBox" style={{maxWidth:680,width:"100%",textAlign:"center"}}>
+     <span className="eyebrow">{blocked.type==="suspended" ? "COMPTE SUSPENDU" : "ACCÈS BLOQUÉ"}</span>
+     <h1>{blocked.type==="suspended" ? "Votre compte est suspendu" : "Votre compte est temporairement bloqué"}</h1>
+     <p className="muted" style={{fontSize:18,lineHeight:1.6}}>{blocked.reason}</p>
+     {blocked.type==="suspended" && <p className="muted">Votre accès à AdPoints restera bloqué jusqu'à ce qu'un créateur ou un administrateur désuspende votre compte.</p>}
+     <button onClick={logout}>Se déconnecter</button>
+    </div>
+   </section>
+  </main>;
+ }
 
  return <main className="dash">
   <header className="modernHeader cleanTopHeader">
