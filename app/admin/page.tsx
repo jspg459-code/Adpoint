@@ -271,6 +271,46 @@ export default function AdminPage() {
     setMessage(`Un email de réinitialisation du mot de passe a été envoyé à ${profile.email}.`);
   }
 
+  async function toggleCreator(profile: Profile) {
+    if (!isOwner) return;
+
+    const makeCreator = profile.role !== "creator";
+    const label = profile.username || profile.email;
+
+    if (!window.confirm(makeCreator
+      ? `Nommer ${label} créateur ? Cette personne aura les droits complets de créateur.`
+      : `Retirer le rôle créateur de ${label} ?`
+    )) return;
+
+    setBusyId(profile.id);
+    setMessage("");
+
+    const { data, error } = await supabase.functions.invoke("admin-user-management", {
+      body: {
+        action: "set_creator",
+        userId: profile.id,
+        makeCreator
+      }
+    });
+
+    setBusyId(null);
+
+    if (error || data?.error) {
+      setMessage(data?.error || error?.message || "Impossible de modifier les droits créateur.");
+      return;
+    }
+
+    await logAudit(makeCreator ? "owner_promote_creator" : "owner_remove_creator", {
+      target_user_id: profile.id,
+      target: label
+    }, "/admin");
+
+    setUsers(list => list.map(u =>
+      u.id === profile.id ? { ...u, role: makeCreator ? "creator" : "user" } : u
+    ));
+    setMessage(makeCreator ? `${label} est maintenant créateur.` : `Le rôle créateur de ${label} a été retiré.`);
+  }
+
   async function toggleAdmin(profile: Profile) {
     if (!isOwner) return;
 
@@ -367,6 +407,7 @@ export default function AdminPage() {
   }
 
   function openPointsDialog(profile: Profile) {
+    if (!isOwner) return;
     setPointsDialogUser(profile);
     setPointsDelta("");
     setMessage("");
@@ -378,7 +419,10 @@ export default function AdminPage() {
   }
 
   async function savePoints() {
-    if (!pointsDialogUser) return;
+    if (!isOwner || !pointsDialogUser) {
+      setMessage("Seul le créateur peut modifier les AdPoints.");
+      return;
+    }
     const delta = Number(pointsDelta.trim());
 
     if (!Number.isFinite(delta) || delta === 0) {
@@ -615,13 +659,22 @@ export default function AdminPage() {
                   )}
 
                   {isOwner && user.email?.toLowerCase() !== "jspg459@gmail.com" && (
-                    <button
-                      className="adminUserAction adminCompactAction"
-                      disabled={busy}
-                      onClick={() => toggleAdmin(user)}
-                    >
-                      {busy ? "..." : user.role === "admin" ? "Retirer admin" : "Nommer admin"}
-                    </button>
+                    <>
+                      <button
+                        className="adminUserAction adminCompactAction"
+                        disabled={busy}
+                        onClick={() => toggleAdmin(user)}
+                      >
+                        {busy ? "..." : user.role === "admin" ? "Retirer admin" : "Nommer admin"}
+                      </button>
+                      <button
+                        className="adminUserAction adminCompactAction"
+                        disabled={busy}
+                        onClick={() => toggleCreator(user)}
+                      >
+                        {busy ? "..." : user.role === "creator" ? "Retirer créateur" : "Nommer créateur"}
+                      </button>
+                    </>
                   )}
 
                   {!protectedFromCurrentAdmin && <>
@@ -633,13 +686,15 @@ export default function AdminPage() {
                       Pseudo
                     </button>
 
-                    <button
-                      className="adminUserAction adminCompactAction"
-                      disabled={busy}
-                      onClick={() => openPointsDialog(user)}
-                    >
-                      Points
-                    </button>
+                    {isOwner && (
+                      <button
+                        className="adminUserAction adminCompactAction"
+                        disabled={busy}
+                        onClick={() => openPointsDialog(user)}
+                      >
+                        Points
+                      </button>
+                    )}
 
                   {activeSuspension ? (
                     <button className="adminUserAction" disabled={busy} onClick={() => manageUser(user, "unban")}>
