@@ -79,7 +79,7 @@ export default function Dashboard(){
 
  async function logout(){await logAudit("logout",{},"/dashboard");await supabase.auth.signOut();router.replace("/");}
 
- const needsUsername=!profile?.username?.trim();
+ // Évite le flash de « Choisis ton pseudo » pendant le chargement initial du profil.\n const needsUsername=!!profile && !profile.username?.trim();
 
  if(blocked){
   return <main className="dash">
