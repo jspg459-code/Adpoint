@@ -4,23 +4,32 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
+import { usePointsBalance } from "../components/PointsProvider";
 
 export default function ShopPage(){
  const router=useRouter();
  const [profile,setProfile]=useState<any>(null);
+ // La boutique utilise exactement la même source de solde que le compteur
+ // global afin qu'il soit impossible d'afficher deux montants différents.
+ const { points, refreshPoints } = usePointsBalance();
 
  useEffect(()=>{
   void (async()=>{
    const {data:{user}}=await supabase.auth.getUser();
    if(!user){router.replace("/login");return;}
+
    const {data}=await supabase
     .from("profiles")
-    .select("username,role,points_balance")
+    .select("username,role")
     .eq("id",user.id)
     .single();
+
    setProfile(data||null);
+
+   // Synchronise le solde partagé dès l'ouverture de la boutique.
+   await refreshPoints();
   })();
- },[router]);
+ },[router,refreshPoints]);
 
  async function logout(){
   await supabase.auth.signOut();
@@ -48,7 +57,7 @@ export default function ShopPage(){
 
    <div className="shopBalanceCard">
     <span>Ton solde disponible</span>
-    <strong>{Number(profile?.points_balance??0)} AdPoints</strong>
+    <strong>{(points ?? 0).toLocaleString("fr-FR")} AdPoints</strong>
    </div>
 
    <div className="shopEmpty">
