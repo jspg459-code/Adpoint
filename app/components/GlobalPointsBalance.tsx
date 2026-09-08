@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { supabase } from "../lib/supabase";
 
 export default function GlobalPointsBalance() {
+  const pathname = usePathname();
   const [points, setPoints] = useState<number | null>(null);
+  const publicRoute = pathname === "/" || pathname === "/login" || pathname === "/signup" || pathname === "/reset-password";
 
   useEffect(() => {
     let channel: ReturnType<typeof supabase.channel> | null = null;
@@ -58,7 +61,8 @@ export default function GlobalPointsBalance() {
     };
   }, []);
 
-  if (points === null) return null;
+  // Le solde ne doit jamais apparaître sur les pages publiques, même si une ancienne session est encore présente dans le navigateur.
+  if (publicRoute || points === null) return null;
 
   return (
     <div className="globalPointsBalance" aria-label={"Solde : " + points + " AdPoints"}>
