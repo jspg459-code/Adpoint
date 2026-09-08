@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
 import { logAudit } from "../lib/audit";
+import MessagesNavLink from "../components/MessagesNavLink";
 
 type Profile = {
   id: string;
@@ -463,7 +464,7 @@ export default function AdminPage() {
         <nav className="cleanTextNav">
           <Link href="/dashboard">Tableau de bord</Link>
           <Link href="/profile">Mon profil</Link>
-          <Link href="/messages">Messages</Link>
+          <MessagesNavLink />
           <Link href="/admin" className="active">Administration</Link>
         </nav>
       </header>
