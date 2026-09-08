@@ -1502,14 +1502,14 @@ body > .globalPointsBalance{
 /* === FINAL FIX: envelope placement (dashboard only) ===
    Keep it in the empty upper-left header zone, above the navigation row. */
 .globalMessagesButton{
-  top:calc(env(safe-area-inset-top, 0px) + 58px)!important;
+  top:calc(env(safe-area-inset-top, 0px) + 42px)!important;
   left:14px!important;
   bottom:auto!important;
   right:auto!important;
 }
 @media(max-width:760px){
   .globalMessagesButton{
-    top:calc(env(safe-area-inset-top, 0px) + 58px)!important;
+    top:calc(env(safe-area-inset-top, 0px) + 42px)!important;
     left:14px!important;
   }
 }
