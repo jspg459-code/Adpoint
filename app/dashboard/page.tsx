@@ -102,6 +102,7 @@ export default function Dashboard(){
     <Link href="/dashboard" className="active">Tableau de bord</Link>
     <Link href="/ranking">Classement</Link>
     <Link href="/profile">Mon profil</Link>
+    <Link href="/messages">Messages</Link>
     {isAdmin&&<Link href="/admin">Administration</Link>}
     <button onClick={logout}>Déconnexion</button>
    </nav>
