@@ -1,0 +1,14 @@
+.shopHeading{display:flex;align-items:flex-start;justify-content:space-between;gap:24px}
+.createButton,.publishButton{border:0;border-radius:18px;background:linear-gradient(135deg,#62d7a1,#28ae68);color:#10231c;font-weight:800;cursor:pointer;padding:16px 22px;font-size:16px;box-shadow:0 12px 32px rgba(47,190,112,.18)}
+.creatorForm{margin:28px 0;padding:28px;border:1px solid rgba(93,212,157,.35);border-radius:28px;background:linear-gradient(135deg,rgba(29,63,57,.96),rgba(22,38,52,.96));box-shadow:0 18px 45px rgba(0,0,0,.18)}
+.formTitle{display:flex;gap:14px;align-items:flex-start;margin-bottom:22px}.formTitle>span{font-size:30px}.formTitle h2{margin:0 0 6px;font-size:24px}.formTitle p{margin:0;color:#aebccc}
+.creatorForm label{display:flex;flex-direction:column;gap:8px;font-weight:700;color:#dbe5ec;margin-top:16px}
+.creatorForm input,.creatorForm textarea{width:100%;box-sizing:border-box;border:1px solid #385169;background:#122333;color:#eef5f8;border-radius:14px;padding:14px;font:inherit;outline:none}
+.creatorForm input:focus,.creatorForm textarea:focus{border-color:#5dd49d;box-shadow:0 0 0 3px rgba(93,212,157,.12)}
+.formGrid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.creatorForm small{font-weight:500;color:#94a5b6}
+.formError{color:#ff9a9a;margin:14px 0 0}.publishButton{margin-top:20px;width:100%}.publishButton:disabled{opacity:.6;cursor:wait}
+.offersHeader{display:flex;align-items:end;justify-content:space-between;margin:36px 0 18px}.offersHeader h2{margin:0;font-size:30px}.offersHeader p{margin:7px 0 0;color:#aebccc}
+.creatorBadge{border:1px solid rgba(93,212,157,.4);color:#83e1b4;background:rgba(57,166,108,.12);border-radius:999px;padding:8px 13px;font-weight:800}
+.offersGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}.offerCard{padding:24px;border:1px solid #31495d;border-radius:24px;background:#192b3b;display:flex;flex-direction:column;min-height:250px}.offerIcon{font-size:34px;margin-bottom:12px}.offerCard h3{margin:0;font-size:23px;color:#edf3f5}.offerCard p{color:#b3c1cf;line-height:1.5;flex:1}.offerFooter{border-top:1px solid #31495d;padding-top:14px;display:flex;flex-direction:column;gap:5px}.offerFooter strong{color:#74d9a5;font-size:18px}.offerFooter span{color:#9aabba;font-size:14px}.exchangeButton{margin-top:16px;border:0;border-radius:14px;padding:13px;background:#2d4355;color:#92a1af;font-weight:800}
+.loading{padding:40px;text-align:center;color:#aebccc;border:1px solid #31495d;border-radius:24px}
+@media(max-width:800px){.shopHeading,.offersHeader{flex-direction:column;align-items:stretch}.createButton{width:100%}.formGrid,.offersGrid{grid-template-columns:1fr}.offersHeader{align-items:flex-start}}
