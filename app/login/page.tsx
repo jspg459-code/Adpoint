@@ -81,7 +81,11 @@ export default function LoginPage(){
     }
 
     await logAudit("login_success", { method: "password" }, "/login");
-    setLoading(false);
+    // Marque immédiatement la navigation comme authentifiée : les éléments globaux
+    // peuvent s’afficher sans attendre une nouvelle vérification Supabase.
+    try {
+      window.sessionStorage.setItem("adpoints_just_logged_in", "1");
+    } catch {}
     router.replace("/dashboard");
   }
 
