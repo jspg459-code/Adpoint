@@ -61,6 +61,7 @@ export default function Dashboard(){
    <Link href="/dashboard" className="textBrand">Ad<span>Points</span></Link>
    <nav className="cleanTextNav">
     <Link href="/dashboard" className="active">Tableau de bord</Link>
+    <Link href="/ranking">Classement</Link>
     <Link href="/profile">Mon profil</Link>
     {isAdmin&&<Link href="/admin">Administration</Link>}
     <button onClick={logout}>Déconnexion</button>
