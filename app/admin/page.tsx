@@ -36,7 +36,6 @@ export default function AdminPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<Profile[]>([]);
-  const [activities, setActivities] = useState<any[]>([]);
   const [message, setMessage] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [isOwner, setIsOwner] = useState(false);
@@ -129,21 +128,16 @@ export default function AdminPage() {
     const creator = me?.role === "creator";
     setIsOwner(creator);
 
-    const [{ data: profiles, error: profilesError }, { data: acts, error: activitiesError }] =
-      await Promise.all([
-        supabase
-          .from("profiles")
-          .select("id,email,username,points_balance,is_suspended,ban_until,ban_reason,created_at,role")
-          .order("created_at", { ascending: false }),
-        supabase.from("activities").select("*").order("created_at", { ascending: false })
-      ]);
+    const { data: profiles, error: profilesError } = await supabase
+      .from("profiles")
+      .select("id,email,username,points_balance,is_suspended,ban_until,ban_reason,created_at,role")
+      .order("created_at", { ascending: false });
 
-    if (profilesError || activitiesError) {
-      setMessage(profilesError?.message || activitiesError?.message || "Erreur de chargement.");
+    if (profilesError) {
+      setMessage(profilesError.message || "Erreur de chargement.");
     }
 
     setUsers(profiles || []);
-    setActivities(acts || []);
     if (creator) await loadOnlineUsers();
     setLoading(false);
   }
@@ -520,27 +514,6 @@ export default function AdminPage() {
     await manageUser(profile, "suspend", undefined, reason);
   }
 
-  async function toggleActivity(activity: any) {
-    const { error } = await supabase
-      .from("activities")
-      .update({ is_active: !activity.is_active })
-      .eq("id", activity.id);
-
-    if (error) {
-      setMessage(error.message);
-      return;
-    }
-
-    await logAudit("admin_toggle_activity", {
-      activity_id: activity.id,
-      activity: activity.title,
-      is_active: !activity.is_active
-    }, "/admin");
-
-    setActivities(list =>
-      list.map(a => a.id === activity.id ? { ...a, is_active: !a.is_active } : a)
-    );
-  }
 
   const isBanned = (u: Profile) => !!u.is_suspended && !!u.ban_until && new Date(u.ban_until).getTime() > Date.now();
   const isSuspended = (u: Profile) => !!u.is_suspended && !u.ban_until;
@@ -574,7 +547,6 @@ export default function AdminPage() {
         <article><small>Comptes bannis</small><strong>{banned}</strong></article>
         <article><small>Comptes suspendus</small><strong>{suspended}</strong></article>
         <article><small>AdPoints en circulation</small><strong>{totalPoints}</strong></article>
-        <article><small>Activités</small><strong>{activities.length}</strong></article>
         {isOwner && (
           <button
             type="button"
@@ -720,32 +692,6 @@ export default function AdminPage() {
         </div>
       </section>
 
-      <section className="adminSection">
-        <div className="adminSectionHead">
-          <div><h2>Activités</h2><p>Active ou désactive les activités disponibles.</p></div>
-        </div>
-
-        <div className="adminList">
-          {activities.map(activity => (
-            <article className="adminUser" key={activity.id}>
-              <div>
-                <strong>{activity.title}</strong>
-                <span>{activity.description || "Aucune description"}</span>
-              </div>
-
-              <div className="adminUserMeta">
-                <b>+{activity.points_reward} AdPoints</b>
-                <span className={activity.is_active ? "status activeStatus" : "status suspended"}>
-                  {activity.is_active ? "Active" : "Inactive"}
-                </span>
-                <button onClick={() => toggleActivity(activity)}>
-                  {activity.is_active ? "Désactiver" : "Activer"}
-                </button>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
 
 
       {usernameDialogUser && (
