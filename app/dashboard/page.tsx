@@ -10,6 +10,7 @@ export default function Dashboard(){
  const router=useRouter();
  const [profile,setProfile]=useState<any>(null);
  const [activities,setActivities]=useState<any[]>([]);
+ const [globalPoints,setGlobalPoints]=useState<number | null>(null);
  const [username,setUsername]=useState("");
  const [saving,setSaving]=useState(false);
  const [message,setMessage]=useState("");
@@ -23,12 +24,16 @@ export default function Dashboard(){
   const syncGlobalPoints = (event: Event) => {
    const next = Number((event as CustomEvent<number | null>).detail);
    if (!Number.isFinite(next)) return;
+   // Conserver la valeur même si le profil n'est pas encore chargé :
+   // le composant global peut terminer sa lecture avant le dashboard.
+   setGlobalPoints(next);
    setProfile((current:any)=>current ? ({...current, points_balance: next}) : current);
   };
 
   window.addEventListener("adpoints:points-changed", syncGlobalPoints as EventListener);
   const cachedPoints = Number((window as any).__ADPOINTS_POINTS__);
   if (Number.isFinite(cachedPoints)) {
+   setGlobalPoints(cachedPoints);
    setProfile((current:any)=>current ? ({...current, points_balance: cachedPoints}) : current);
   }
 
@@ -44,7 +49,10 @@ export default function Dashboard(){
      {event:"UPDATE",schema:"public",table:"profiles",filter:"id=eq."+user.id},
      (payload)=>{
       if(!mounted) return;
-      setProfile((current:any)=>({...current,...(payload.new as any)}));
+      const nextProfile = payload.new as any;
+      const nextPoints = Number(nextProfile.points_balance ?? 0);
+      setGlobalPoints(nextPoints);
+      setProfile((current:any)=>({...current,...nextProfile, points_balance: nextPoints}));
      }
     )
     .subscribe();
@@ -84,13 +92,15 @@ export default function Dashboard(){
    points_balance:Number(p.points_balance ?? 0)
   };
 
-  // Le compteur global et la carte du tableau de bord doivent toujours afficher
-  // exactement la même valeur dans cette session.
+  // Si le compteur global a déjà chargé la valeur, on la garde comme valeur
+  // immédiatement affichée. Sinon la valeur Supabase reste le secours.
   const globalCachedPoints = typeof window !== "undefined"
    ? Number((window as any).__ADPOINTS_POINTS__)
    : NaN;
   if (Number.isFinite(globalCachedPoints)) {
-   currentProfile.points_balance = globalCachedPoints;
+   setGlobalPoints(globalCachedPoints);
+  } else {
+   setGlobalPoints(Number(currentProfile.points_balance ?? 0));
   }
 
   const activeBan=currentProfile?.ban_until && new Date(currentProfile.ban_until).getTime()>Date.now();
@@ -156,7 +166,7 @@ export default function Dashboard(){
 
   <section className="dashHero">
    <div><span className="eyebrow">BON RETOUR</span><h1>Bonjour {profile?.username||"👋"}</h1><p>Ton compte est connecté avec succès.</p></div>
-   <div className="balance"><small>SOLDE</small><strong>{profile?.points_balance??0}</strong><span>AdPoints</span></div>
+   <div className="balance"><small>SOLDE</small><strong>{globalPoints ?? profile?.points_balance ?? 0}</strong><span>AdPoints</span></div>
   </section>
 
   {needsUsername&&<section className="profileBox"><h2>Choisis ton pseudo</h2><p className="muted">Il sera affiché à la place de ton adresse e-mail. Tu pourras le modifier plus tard depuis ton profil.</p>
