@@ -63,15 +63,28 @@ export default function Dashboard(){
   // Seul le propriétaire peut nommer d'autres administrateurs (contrôle côté panel/serveur).
   setIsAdmin(currentProfile?.role === "admin" || currentProfile?.role === "creator");
 
-  // La boutique est ouverte uniquement lorsqu'au moins une offre est active.
-  // Le même état est utilisé par le panel créateur, le tableau de bord et la page boutique.
-  const { data: activeRewards, error: shopError } = await supabase
-   .from("rewards")
-   .select("id")
-   .eq("is_active", true)
-   .limit(1);
+  // La boutique est accessible dès qu'au moins une offre est active.
+  // On utilise un COUNT et une seconde tentative pour éviter qu'un chargement
+  // réseau momentané fasse disparaître l'accès alors que la boutique est activée.
+  let activeCount = 0;
+  let shopError: any = null;
 
-  setShopEnabled(!shopError && (activeRewards || []).length > 0);
+  for (let attempt = 0; attempt < 2; attempt++) {
+   const result = await supabase
+    .from("rewards")
+    .select("id", { count: "exact", head: true })
+    .eq("is_active", true);
+
+   shopError = result.error;
+   if (!shopError) {
+    activeCount = result.count ?? 0;
+    break;
+   }
+
+   if (attempt === 0) await new Promise(resolve => window.setTimeout(resolve, 250));
+  }
+
+  setShopEnabled(!shopError && activeCount > 0);
   setShopChecked(true);
  }
 
