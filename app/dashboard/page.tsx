@@ -5,12 +5,13 @@ import {useEffect,useState} from "react";
 import {useRouter} from "next/navigation";
 import {supabase} from "../lib/supabase";
 import { logAudit } from "../lib/audit";
+import { usePointsBalance } from "../components/PointsProvider";
 
 export default function Dashboard(){
  const router=useRouter();
  const [profile,setProfile]=useState<any>(null);
  const [activities,setActivities]=useState<any[]>([]);
- const [globalPoints,setGlobalPoints]=useState<number | null>(null);
+ const { points: globalPoints, refreshPoints } = usePointsBalance();
  const [username,setUsername]=useState("");
  const [saving,setSaving]=useState(false);
  const [message,setMessage]=useState("");
@@ -18,53 +19,8 @@ export default function Dashboard(){
  const [blocked,setBlocked]=useState<{reason:string;type:"suspended"|"banned"}|null>(null);
 
  useEffect(()=>{
-  let channel: ReturnType<typeof supabase.channel> | null = null;
-  let mounted = true;
-
-  const syncGlobalPoints = (event: Event) => {
-   const next = Number((event as CustomEvent<number | null>).detail);
-   if (!Number.isFinite(next)) return;
-   // Conserver la valeur même si le profil n'est pas encore chargé :
-   // le composant global peut terminer sa lecture avant le dashboard.
-   setGlobalPoints(next);
-   setProfile((current:any)=>current ? ({...current, points_balance: next}) : current);
-  };
-
-  window.addEventListener("adpoints:points-changed", syncGlobalPoints as EventListener);
-  const cachedPoints = Number((window as any).__ADPOINTS_POINTS__);
-  if (Number.isFinite(cachedPoints)) {
-   setGlobalPoints(cachedPoints);
-   setProfile((current:any)=>current ? ({...current, points_balance: cachedPoints}) : current);
-  }
-
-  async function initialize(){
-   await load();
-   const {data:{user}}=await supabase.auth.getUser();
-   if(!user || !mounted) return;
-
-   channel=supabase
-    .channel("dashboard-points-"+user.id)
-    .on(
-     "postgres_changes",
-     {event:"UPDATE",schema:"public",table:"profiles",filter:"id=eq."+user.id},
-     (payload)=>{
-      if(!mounted) return;
-      const nextProfile = payload.new as any;
-      const nextPoints = Number(nextProfile.points_balance ?? 0);
-      setGlobalPoints(nextPoints);
-      setProfile((current:any)=>({...current,...nextProfile, points_balance: nextPoints}));
-     }
-    )
-    .subscribe();
-  }
-
-  void initialize();
-
-  return ()=>{
-   mounted=false;
-   window.removeEventListener("adpoints:points-changed", syncGlobalPoints as EventListener);
-   if(channel) void supabase.removeChannel(channel);
-  };
+  void load();
+  void refreshPoints();
  },[]);
 
  async function load(){
@@ -92,16 +48,6 @@ export default function Dashboard(){
    points_balance:Number(p.points_balance ?? 0)
   };
 
-  // Si le compteur global a déjà chargé la valeur, on la garde comme valeur
-  // immédiatement affichée. Sinon la valeur Supabase reste le secours.
-  const globalCachedPoints = typeof window !== "undefined"
-   ? Number((window as any).__ADPOINTS_POINTS__)
-   : NaN;
-  if (Number.isFinite(globalCachedPoints)) {
-   setGlobalPoints(globalCachedPoints);
-  } else {
-   setGlobalPoints(Number(currentProfile.points_balance ?? 0));
-  }
 
   const activeBan=currentProfile?.ban_until && new Date(currentProfile.ban_until).getTime()>Date.now();
   const activeSuspension=!!currentProfile?.is_suspended && !currentProfile?.ban_until;
@@ -116,6 +62,7 @@ export default function Dashboard(){
 
   setBlocked(null);
   setProfile(currentProfile); setUsername(currentProfile?.username||""); setActivities(a||[]);
+  void refreshPoints();
   // Tous les comptes ayant le rôle admin voient l'accès Administration.
   // Seul le propriétaire peut nommer d'autres administrateurs (contrôle côté panel/serveur).
   setIsAdmin(currentProfile?.role === "admin" || currentProfile?.role === "creator");
