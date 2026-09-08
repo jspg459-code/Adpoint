@@ -26,6 +26,8 @@ export default function ShopPage() {
   const [showCreatorForm, setShowCreatorForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
+  const [deletingOfferId, setDeletingOfferId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState("");
   const { points, refreshPoints } = usePointsBalance();
 
   const isCreator = profile?.role === "creator";
@@ -65,6 +67,30 @@ export default function ShopPage() {
   async function logout() {
     await supabase.auth.signOut();
     router.replace("/");
+  }
+
+  async function deleteOffer(offer: Reward) {
+    if (!isCreator || !userId || deletingOfferId) return;
+
+    const confirmed = window.confirm(`Supprimer définitivement l’offre « ${offer.title} » ?`);
+    if (!confirmed) return;
+
+    setDeletingOfferId(offer.id);
+    setDeleteError("");
+
+    const { error } = await supabase
+      .from("rewards")
+      .delete()
+      .eq("id", offer.id);
+
+    setDeletingOfferId(null);
+
+    if (error) {
+      setDeleteError(error.message);
+      return;
+    }
+
+    await loadOffers();
   }
 
   async function createOffer(event: FormEvent<HTMLFormElement>) {
@@ -193,6 +219,8 @@ export default function ShopPage() {
           {isCreator && <span className={styles.creatorBadge}>Mode créateur</span>}
         </div>
 
+        {deleteError && <p className={styles.deleteError}>{deleteError}</p>}
+
         {loadingOffers ? (
           <div className={styles.loading}>Chargement des offres...</div>
         ) : offers.length === 0 ? (
@@ -213,9 +241,20 @@ export default function ShopPage() {
                   <strong>{offer.points_cost.toLocaleString("fr-FR")} AdPoints</strong>
                   <span>{offer.stock === null ? "Stock illimité" : offer.stock + " disponible" + (offer.stock > 1 ? "s" : "")}</span>
                 </div>
-                <button className={styles.exchangeButton} disabled>
-                  Échange bientôt
-                </button>
+{isCreator ? (
+                  <button
+                    className={styles.deleteButton}
+                    onClick={() => void deleteOffer(offer)}
+                    disabled={deletingOfferId === offer.id}
+                    type="button"
+                  >
+                    {deletingOfferId === offer.id ? "Suppression..." : "🗑️ Supprimer l’offre"}
+                  </button>
+                ) : (
+                  <button className={styles.exchangeButton} disabled>
+                    Échange bientôt
+                  </button>
+                )}
               </article>
             ))}
           </div>
