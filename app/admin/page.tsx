@@ -46,6 +46,7 @@ export default function AdminPage() {
   const [banDuration, setBanDuration] = useState("24");
   const [banUnit, setBanUnit] = useState<"minutes" | "hours" | "days">("hours");
   const [banReason, setBanReason] = useState("");
+  const [suspendReason, setSuspendReason] = useState("Suspension décidée par l’administrateur.");
 
   const [usernameDialogUser, setUsernameDialogUser] = useState<Profile | null>(null);
   const [editUsername, setEditUsername] = useState("");
@@ -97,7 +98,7 @@ export default function AdminPage() {
 
   async function manageUser(
     profile: Profile,
-    action: "ban" | "unban" | "delete",
+    action: "ban" | "unban" | "delete" | "suspend",
     durationSeconds?: number,
     reason?: string
   ) {
@@ -106,10 +107,14 @@ export default function AdminPage() {
 
     const { data, error } = await supabase.functions.invoke("admin-user-management", {
       body: {
-        action,
+        // Une suspension utilise le même verrouillage sécurisé côté serveur qu'un blocage,
+        // mais sans date de fin : ban_until reste null et l'interface l'affiche comme Suspension.
+        action: action === "suspend" ? "ban" : action,
         userId: profile.id,
-        durationSeconds,
-        reason: action === "ban" ? (reason || "Bannissement décidé par l’administrateur.") : undefined
+        durationSeconds: action === "suspend" ? undefined : durationSeconds,
+        reason: (action === "ban" || action === "suspend")
+          ? (reason || (action === "suspend" ? "Suspension décidée par l’administrateur." : "Bannissement décidé par l’administrateur."))
+          : undefined
       }
     });
 
@@ -128,7 +133,8 @@ export default function AdminPage() {
     }
 
     if (action === "unban") {
-      await logAudit("admin_unban_user", { target_user_id: profile.id, target: profile.username || profile.email }, "/admin");
+      const wasSuspended = !!profile.is_suspended && !profile.ban_until;
+      await logAudit(wasSuspended ? "admin_unsuspend_user" : "admin_unban_user", { target_user_id: profile.id, target: profile.username || profile.email }, "/admin");
       setUsers(list =>
         list.map(u =>
           u.id === profile.id
@@ -136,7 +142,29 @@ export default function AdminPage() {
             : u
         )
       );
-      setMessage("Utilisateur débanni avec succès.");
+      setMessage(wasSuspended ? "Utilisateur désuspendu avec succès." : "Utilisateur débanni avec succès.");
+      return true;
+    }
+
+    if (action === "suspend") {
+      await logAudit("admin_suspend_user", {
+        target_user_id: profile.id,
+        target: profile.username || profile.email,
+        reason: reason || "Suspension décidée par l’administrateur."
+      }, "/admin");
+      setUsers(list =>
+        list.map(u =>
+          u.id === profile.id
+            ? {
+                ...u,
+                is_suspended: true,
+                ban_until: null,
+                ban_reason: reason || "Suspension décidée par l’administrateur."
+              }
+            : u
+        )
+      );
+      setMessage("Utilisateur suspendu avec succès.");
       return true;
     }
 
@@ -362,6 +390,13 @@ export default function AdminPage() {
     if (success) closeBanDialog();
   }
 
+  async function suspendUser(profile: Profile) {
+    const reason = suspendReason.trim() || "Suspension décidée par l’administrateur.";
+    const label = profile.username || profile.email;
+    if (!window.confirm(`Suspendre ${label} ? L'utilisateur ne pourra plus accéder à son compte jusqu'à ce qu'un créateur ou un administrateur le désuspende.`)) return;
+    await manageUser(profile, "suspend", undefined, reason);
+  }
+
   async function toggleActivity(activity: any) {
     const { error } = await supabase
       .from("activities")
@@ -384,8 +419,10 @@ export default function AdminPage() {
     );
   }
 
-  const isBanned = (u: Profile) => !!u.is_suspended && (!u.ban_until || new Date(u.ban_until).getTime() > Date.now());
+  const isBanned = (u: Profile) => !!u.is_suspended && !!u.ban_until && new Date(u.ban_until).getTime() > Date.now();
+  const isSuspended = (u: Profile) => !!u.is_suspended && !u.ban_until;
   const banned = users.filter(isBanned).length;
+  const suspended = users.filter(isSuspended).length;
   const totalPoints = users.reduce((sum, u) => sum + (u.points_balance || 0), 0);
 
   if (loading) {
@@ -412,6 +449,7 @@ export default function AdminPage() {
       <section className="adminStats">
         <article><small>Utilisateurs</small><strong>{users.length}</strong></article>
         <article><small>Comptes bannis</small><strong>{banned}</strong></article>
+        <article><small>Comptes suspendus</small><strong>{suspended}</strong></article>
         <article><small>AdPoints en circulation</small><strong>{totalPoints}</strong></article>
         <article><small>Activités</small><strong>{activities.length}</strong></article>
       </section>
@@ -422,7 +460,7 @@ export default function AdminPage() {
         <div className="adminSectionHead">
           <div>
             <h2>Utilisateurs</h2>
-            <p>Gère uniquement les bannissements et les débannissements des utilisateurs.</p>
+            <p>Gère les bannissements et les suspensions. Le créateur et les admins peuvent désuspendre un utilisateur.</p>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             <Link href="/admin/logs" className="adminRefresh">Logs</Link>
@@ -433,6 +471,7 @@ export default function AdminPage() {
         <div className="adminList">
           {users.map(user => {
             const activeBan = isBanned(user);
+            const activeSuspension = isSuspended(user);
             const busy = busyId === user.id;
             const isCreatorAccount = user.role === "creator" || user.email?.toLowerCase() === "jspg459@gmail.com";
             const protectedFromCurrentAdmin = isCreatorAccount && !isOwner;
@@ -443,20 +482,19 @@ export default function AdminPage() {
                   <strong>{user.username || "Sans pseudo"}</strong>
                   <span>{user.email}</span>
 
-                  {activeBan && (
+                  {(activeBan || activeSuspension) && (
                     <>
-                      <span className="muted">⛔ Motif : {user.ban_reason || "Non précisé"}</span>
-                      <span className="muted">
-                        ⏳ {user.ban_until ? `Bannissement restant : ${remainingTime(user.ban_until)}` : "Bannissement définitif"}
-                      </span>
+                      <span className="muted">{activeSuspension ? "⏸️" : "⛔"} Motif : {user.ban_reason || "Non précisé"}</span>
+                      {activeBan && <span className="muted">⏳ Bannissement restant : {remainingTime(user.ban_until!)}</span>}
+                      {activeSuspension && <span className="muted">⏸️ Compte suspendu jusqu'à désuspension par un créateur ou un admin.</span>}
                     </>
                   )}
                 </div>
 
                 <div className="adminUserMeta">
                   <b>{user.points_balance || 0} AdPoints</b>
-                  <span className={activeBan ? "status suspended" : "status activeStatus"}>
-                    {activeBan ? "Banni" : "Actif"}
+                  <span className={(activeBan || activeSuspension) ? "status suspended" : "status activeStatus"}>
+                    {activeBan ? "Banni" : activeSuspension ? "Suspendu" : "Actif"}
                   </span>
                   {user.role === "creator" && <span className="status activeStatus">Créateur</span>}
                   {user.role === "admin" && <span className="status activeStatus">Admin</span>}
@@ -498,14 +536,23 @@ export default function AdminPage() {
                       Points
                     </button>
 
-                  {activeBan ? (
+                  {activeSuspension ? (
+                    <button className="adminUserAction" disabled={busy} onClick={() => manageUser(user, "unban")}>
+                      {busy ? "..." : "Désuspendre"}
+                    </button>
+                  ) : activeBan ? (
                     <button className="adminUserAction" disabled={busy} onClick={() => manageUser(user, "unban")}>
                       {busy ? "..." : "Débannir"}
                     </button>
                   ) : (
-                    <button className="adminUserAction" disabled={busy} onClick={() => openBanDialog(user)}>
-                      {busy ? "..." : "Bannir"}
-                    </button>
+                    <>
+                      <button className="adminUserAction adminCompactAction" disabled={busy} onClick={() => suspendUser(user)}>
+                        {busy ? "..." : "Suspendre"}
+                      </button>
+                      <button className="adminUserAction" disabled={busy} onClick={() => openBanDialog(user)}>
+                        {busy ? "..." : "Bannir"}
+                      </button>
+                    </>
                   )}
                   </>}
                 </div>
