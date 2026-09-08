@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
 import { logAudit } from "../lib/audit";
+import MessagesNavLink from "../components/MessagesNavLink";
 
 const WEEK = 7 * 24 * 60 * 60 * 1000;
 
@@ -117,6 +118,7 @@ export default function ProfilePage() {
           <Link href="/dashboard">Tableau de bord</Link>
           <Link href="/ranking">Classement</Link>
           <Link href="/profile" className="active">Mon profil</Link>
+          <MessagesNavLink />
           {isAdmin && <Link href="/admin">Administration</Link>}
           <button onClick={logout}>Déconnexion</button>
         </nav>
