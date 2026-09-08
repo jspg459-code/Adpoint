@@ -50,27 +50,35 @@ export default function Dashboard(){
   const {data:{user}}=await supabase.auth.getUser();
   if(!user){router.replace("/login");return;}
 
-  const [{data:p},{data:a}]=await Promise.all([
-   supabase.from("profiles").select("username,email,points_balance,role,ban_until,is_suspended,ban_reason").eq("id",user.id).single(),
+  const [{data:p},{data:balanceRow},{data:a}]=await Promise.all([
+   supabase.from("profiles").select("username,email,role,ban_until,is_suspended,ban_reason").eq("id",user.id).single(),
+   supabase.from("profiles").select("points_balance").eq("id",user.id).single(),
    supabase.from("activities").select("*").eq("is_active",true).order("created_at")
   ]);
 
-  const activeBan=p?.ban_until && new Date(p.ban_until).getTime()>Date.now();
-  const activeSuspension=!!p?.is_suspended && !p?.ban_until;
+  // Le solde affiché dans le tableau de bord utilise exactement la même
+  // source de vérité que le compteur global fixe.
+  const currentProfile={
+   ...(p||{}),
+   points_balance:Number(balanceRow?.points_balance??0)
+  };
+
+  const activeBan=currentProfile?.ban_until && new Date(currentProfile.ban_until).getTime()>Date.now();
+  const activeSuspension=!!currentProfile?.is_suspended && !currentProfile?.ban_until;
   if(activeBan || activeSuspension){
    setBlocked({
     type: activeSuspension ? "suspended" : "banned",
-    reason: p?.ban_reason || (activeSuspension ? "Ton compte a été suspendu par l'administration." : "Ton compte est actuellement banni.")
+    reason: currentProfile?.ban_reason || (activeSuspension ? "Ton compte a été suspendu par l'administration." : "Ton compte est actuellement banni.")
    });
-   setProfile(p);
+   setProfile(currentProfile);
    return;
   }
 
   setBlocked(null);
-  setProfile(p); setUsername(p?.username||""); setActivities(a||[]);
+  setProfile(currentProfile); setUsername(currentProfile?.username||""); setActivities(a||[]);
   // Tous les comptes ayant le rôle admin voient l'accès Administration.
   // Seul le propriétaire peut nommer d'autres administrateurs (contrôle côté panel/serveur).
-  setIsAdmin(p?.role === "admin" || p?.role === "creator");
+  setIsAdmin(currentProfile?.role === "admin" || currentProfile?.role === "creator");
  }
 
  async function save(){
