@@ -1,10 +1,7 @@
 "use client";
-
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-
 type Lang = "fr" | "en" | "es" | "de" | "it" | "pt" | "nl" | "ar";
-
 const languages: Record<Lang, { flag: string; name: string }> = {
   fr: { flag: "🇫🇷", name: "Français" },
   en: { flag: "🇬🇧", name: "English" },
@@ -15,10 +12,8 @@ const languages: Record<Lang, { flag: string; name: string }> = {
   nl: { flag: "🇳🇱", name: "Nederlands" },
   ar: { flag: "🇸🇦", name: "العربية" }
 };
-
 type Translation = Partial<Record<Lang, string>>;
 const P = (en:string, es:string, de:string, it:string, pt:string, nl:string, ar:string): Translation => ({en,es,de,it,pt,nl,ar});
-
 const phrases: Record<string, Translation> = {
   "Connexion": P("Login","Iniciar sesión","Anmelden","Accedi","Entrar","Inloggen","تسجيل الدخول"),
   "Se connecter": P("Sign in","Iniciar sesión","Anmelden","Accedi","Entrar","Inloggen","تسجيل الدخول"),
@@ -52,7 +47,6 @@ const phrases: Record<string, Translation> = {
   "Transforme tes activités en AdPoints et échange-les contre des récompenses.": P("Turn your activities into AdPoints and exchange them for rewards.","Convierte tus actividades en AdPoints y cámbialos por recompensas.","Verwandle deine Aktivitäten in AdPoints und tausche sie gegen Belohnungen ein.","Trasforma le tue attività in AdPoints e scambiali con ricompense.","Transforme suas atividades em AdPoints e troque-os por recompensas.","Zet je activiteiten om in AdPoints en wissel ze in voor beloningen.","حوّل أنشطتك إلى نقاط AdPoints واستبدلها بمكافآت."),
   "Commencer gratuitement →": P("Start for free →","Comenzar gratis →","Kostenlos starten →","Inizia gratuitamente →","Começar gratuitamente →","Gratis beginnen →","ابدأ مجانًا ←"),
   "Commencer gratuitement": P("Start for free","Comenzar gratis","Kostenlos starten","Inizia gratuitamente","Começar gratuitamente","Gratis beginnen","ابدأ مجانًا"),
-  "Se connecter": P("Sign in","Iniciar sesión","Anmelden","Accedi","Entrar","Inloggen","تسجيل الدخول"),
 
   "CLASSEMENT": P("RANKING","CLASIFICACIÓN","RANGLISTE","CLASSIFICA","CLASSIFICAÇÃO","RANGLIJST","التصنيف"),
   "Les meilleurs": P("The best","Los mejores","Die besten","I migliori","Os melhores","De besten","أفضل"),
@@ -68,7 +62,6 @@ const phrases: Record<string, Translation> = {
   "Joueur": P("Player","Jugador","Spieler","Giocatore","Jogador","Speler","اللاعب"),
   "Chargement du classement...": P("Loading ranking...","Cargando clasificación...","Rangliste wird geladen...","Caricamento classifica...","Carregando classificação...","Ranglijst laden...","جارٍ تحميل الترتيب..."),
   "Réessayer": P("Try again","Intentar de nuevo","Erneut versuchen","Riprova","Tentar novamente","Opnieuw proberen","حاول مرة أخرى"),
-
   "Retour à AdPoints": P("Back to AdPoints","Volver a AdPoints","Zurück zu AdPoints","Torna ad AdPoints","Voltar ao AdPoints","Terug naar AdPoints","العودة إلى AdPoints"),
   "Retour à la connexion": P("Back to login","Volver al inicio de sesión","Zurück zur Anmeldung","Torna al login","Voltar ao login","Terug naar inloggen","العودة لتسجيل الدخول"),
   "Content de te revoir.": P("Good to see you again.","Me alegra verte de nuevo.","Schön, dich wiederzusehen.","Felice di rivederti.","Que bom ver você de novo.","Fijn je weer te zien.","سعيد برؤيتك مجددًا."),
@@ -144,11 +137,10 @@ const phrases: Record<string, Translation> = {
   "Débannir": P("Unban","Desbloquear","Entsperren","Revoca ban","Desbanir","Ban opheffen","إلغاء الحظر"),
   "Suspendre": P("Suspend","Suspender","Sperren","Sospendi","Suspender","Opschorten","إيقاف"),
   "Bannir": P("Ban","Bloquear","Sperren","Banna","Banir","Verbannen","حظر"),
-  "Enregistrer le pseudo": P("Save username","Guardar nombre","Benutzernamen speichern","Salva nome utente","Salvar nome","Gebruikersnaam opslaan","حفظ اسم المستخدم"),
-  "Enregistrer les modifications": P("Save changes","Guardar cambios","Änderungen speichern","Salva modifiche","Salvar alterações","Wijzigingen opslaan","حفظ التغييرات"),
+
   "Désactiver la boutique": P("Disable shop","Desactivar tienda","Shop deaktivieren","Disattiva negozio","Desativar loja","Winkel uitschakelen","تعطيل المتجر"),
   "Activer la boutique": P("Enable shop","Activar tienda","Shop aktivieren","Attiva negozio","Ativar loja","Winkel inschakelen","تفعيل المتجر"),
-  "Modification...": P("Updating...","Actualizando...","Wird geändert...","Aggiornamento...","Atualizando...","Wijzigen...","جارٍ التعديل..."),
+
   "Utilisateur": P("User","Usuario","Benutzer","Utente","Usuário","Gebruiker","مستخدم")
 ,
   "BON RETOUR": P("WELCOME BACK","BIENVENIDO DE NUEVO","WILLKOMMEN ZURÜCK","BENTORNATO","BEM-VINDO DE VOLTA","WELKOM TERUG","مرحبًا بعودتك"),
@@ -188,7 +180,7 @@ const phrases: Record<string, Translation> = {
   "Cette conversation est vide.": P("This conversation is empty.","Esta conversación está vacía.","Diese Unterhaltung ist leer.","Questa conversazione è vuota.","Esta conversa está vazia.","Dit gesprek is leeg.","هذه المحادثة فارغة."),
   "BESOIN D'AIDE ?": P("NEED HELP?","¿NECESITAS AYUDA?","BRAUCHST DU HILFE?","HAI BISOGNO DI AIUTO?","PRECISA DE AJUDA?","HULP NODIG?","هل تحتاج إلى مساعدة؟"),
   "Contacter l'administration": P("Contact administration","Contactar a la administración","Administration kontaktieren","Contatta l'amministrazione","Contatar a administração","Contact opnemen met de administratie","اتصل بالإدارة"),
-  "Mon profil": P("My profile","Mi perfil","Mein Profil","Il mio profilo","Meu perfil","Mijn profiel","ملفي الشخصي"),
+
   "Mon": P("My","Mi","Mein","Il mio","Meu","Mijn","ملفي"),
   "profil": P("profile","perfil","Profil","profilo","perfil","profiel","الشخصي"),
   "Ton pseudo est celui qui sera affiché sur AdPoints.": P("Your username is what will be displayed on AdPoints.","Tu nombre de usuario será el que se muestre en AdPoints.","Dein Benutzername wird auf AdPoints angezeigt.","Il tuo nome utente sarà quello visualizzato su AdPoints.","Seu nome de usuário será exibido no AdPoints.","Je gebruikersnaam wordt op AdPoints weergegeven.","اسم المستخدم الخاص بك هو الذي سيظهر على AdPoints."),
@@ -214,7 +206,7 @@ const phrases: Record<string, Translation> = {
   "Logs": P("Logs","Registros","Protokolle","Log","Registros","Logs","السجلات"),
   "Sans pseudo": P("No username","Sin nombre de usuario","Kein Benutzername","Senza nome utente","Sem nome de usuário","Geen gebruikersnaam","بدون اسم مستخدم"),
   "Non précisé": P("Not specified","No especificado","Nicht angegeben","Non specificato","Não especificado","Niet opgegeven","غير محدد"),
-  "Pseudo": P("Username","Nombre de usuario","Benutzername","Nome utente","Nome de usuário","Gebruikersnaam","اسم المستخدم"),
+
   "Points": P("Points","Puntos","Punkte","Punti","Pontos","Punten","النقاط"),
   "Modifier le pseudo": P("Edit username","Modificar nombre","Benutzernamen ändern","Modifica nome utente","Editar nome de usuário","Gebruikersnaam wijzigen","تعديل اسم المستخدم"),
   "Nouveau pseudo": P("New username","Nuevo nombre de usuario","Neuer Benutzername","Nuovo nome utente","Novo nome de usuário","Nieuwe gebruikersnaam","اسم مستخدم جديد"),
@@ -245,9 +237,7 @@ const phrases: Record<string, Translation> = {
   "Retrouve uniquement les actions réalisées par cet utilisateur.": P("Find only actions performed by this user.","Encuentra solo las acciones realizadas por este usuario.","Finde nur Aktionen dieses Benutzers.","Trova solo le azioni eseguite da questo utente.","Encontre apenas ações realizadas por este usuário.","Bekijk alleen acties van deze gebruiker.","اعرض فقط الإجراءات التي قام بها هذا المستخدم."),
   "Retrouve les actions et les pages consultées par les utilisateurs connectés.": P("Find actions and pages visited by signed-in users.","Encuentra acciones y páginas visitadas por usuarios conectados.","Finde Aktionen und besuchte Seiten angemeldeter Benutzer.","Trova azioni e pagine consultate dagli utenti connessi.","Encontre ações e páginas acessadas por usuários conectados.","Bekijk acties en pagina's van ingelogde gebruikers.","اعرض الإجراءات والصفحات التي زارها المستخدمون المسجلون."),
   "Consultation d’une page": P("Page view","Consulta de página","Seitenaufruf","Visualizzazione pagina","Visualização de página","Paginaweergave","عرض صفحة")
-
 };
-
 function translateValue(value: string, lang: Lang) {
   if (lang === "fr") return value;
   const match = value.match(/^(\s*)([\s\S]*?)(\s*)$/);
@@ -256,14 +246,12 @@ function translateValue(value: string, lang: Lang) {
   const tail = match?.[3] ?? "";
   return lead + (phrases[core]?.[lang] ?? core) + tail;
 }
-
 export default function LanguageSelector() {
   const [open, setOpen] = useState(false);
   const [lang, setLang] = useState<Lang>("fr");
   const [mounted, setMounted] = useState(false);
   const originals = useRef(new WeakMap<Text, string>());
   const observer = useRef<MutationObserver | null>(null);
-
   const translateNode = (node: Text, activeLang: Lang) => {
     const parent = node.parentElement;
     if (!parent || parent.closest("[data-no-translate='true']")) return;
@@ -274,7 +262,6 @@ export default function LanguageSelector() {
     const next = translateValue(original, activeLang);
     if (node.nodeValue !== next) node.nodeValue = next;
   };
-
   const translateAll = (activeLang: Lang) => {
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     let node: Node | null;
@@ -282,19 +269,16 @@ export default function LanguageSelector() {
     document.documentElement.lang = activeLang;
     document.documentElement.dir = activeLang === "ar" ? "rtl" : "ltr";
   };
-
   useEffect(() => {
     setMounted(true);
     const saved = localStorage.getItem("adpoints-language") as Lang | null;
     setLang(saved && languages[saved] ? saved : "fr");
   }, []);
-
   useEffect(() => {
     if (!mounted) return;
     observer.current?.disconnect();
     translateAll(lang);
     localStorage.setItem("adpoints-language", lang);
-
     observer.current = new MutationObserver((records) => {
       for (const record of records) {
         record.addedNodes.forEach((added) => {
@@ -310,9 +294,7 @@ export default function LanguageSelector() {
     observer.current.observe(document.body, { childList: true, subtree: true });
     return () => observer.current?.disconnect();
   }, [lang, mounted]);
-
   if (!mounted) return null;
-
   return createPortal(
     <div className="languageWidget" data-no-translate="true">
       <button className="languageButton" aria-label="Choose language" onClick={() => setOpen(v => !v)}>
