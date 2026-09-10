@@ -130,18 +130,21 @@ export default function Dashboard(){
    {message&&<div className="notice">{message}</div>}
   </section>}
 
-  {isAdmin && (
-   <section>
-    <h2>Tests publicitaires</h2>
-    <div className="activityGrid">
-     <article className="activity">
-      <h3>🎬 Test vidéo AdCash</h3>
-      <p>Teste une zone In-stream VAST sans distribuer d’AdPoints.</p>
-      <Link href="/video-test" className="shopBrowseButton">Lancer le test →</Link>
-     </article>
-    </div>
-   </section>
-  )}
+  <section>
+   <h2>Mon espace AdPoints</h2>
+   <div className="activityGrid">
+    <article className="activity">
+     <h3>✨ Ton solde</h3>
+     <p>Tu possèdes actuellement <strong>{Number(profile?.points_balance ?? 0).toLocaleString("fr-FR")} AdPoints</strong>.</p>
+     <Link href="/profile" className="shopBrowseButton">Voir mon profil →</Link>
+    </article>
+    <article className="activity">
+     <h3>🏆 Le classement</h3>
+     <p>Compare ton nombre d’AdPoints avec les autres joueurs et tente de monter dans le classement.</p>
+     <Link href="/ranking" className="shopBrowseButton">Voir le classement →</Link>
+    </article>
+   </div>
+  </section>
 
   {shopChecked && shopEnabled && (
    <section>
