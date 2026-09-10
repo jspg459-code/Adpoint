@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { logAudit } from "../lib/audit";
 
 const VAST_URL = "https://youradexchange.com/video/select.php?r=1213948";
+const SAMPLE_VIDEO = "https://media.w3.org/2010/05/sintel/trailer.mp4";
 const FLUID_PLAYER_SRC = "https://cdn.fluidplayer.com/v3/current/fluidplayer.min.js";
 
 export default function WatchAdPage() {
@@ -14,13 +15,24 @@ export default function WatchAdPage() {
   const playerRef = useRef<any>(null);
 
   useEffect(() => {
-    const script = document.createElement("script");
+    const existing = document.querySelector('script[src="' + FLUID_PLAYER_SRC + '"]') as HTMLScriptElement | null;
+
+    if ((window as any).fluidPlayer) {
+      setReady(true);
+      return;
+    }
+
+    const script = existing || document.createElement("script");
     script.src = FLUID_PLAYER_SRC;
     script.async = true;
     script.onload = () => setReady(true);
     script.onerror = () => setStatus("Impossible de charger le lecteur vidéo.");
-    document.head.appendChild(script);
-    return () => script.remove();
+
+    if (!existing) document.head.appendChild(script);
+
+    return () => {
+      if (!existing) script.remove();
+    };
   }, []);
 
   function launchAd() {
@@ -31,45 +43,50 @@ export default function WatchAdPage() {
       return;
     }
 
-    if (isPlaying) return;
+    const video = document.getElementById("adpoints-watch-player") as HTMLVideoElement | null;
+    if (!video) {
+      setStatus("Lecteur vidéo introuvable.");
+      return;
+    }
 
     setIsPlaying(true);
-    setStatus("Publicité en cours de chargement…");
+    setStatus("Préparation de la publicité…");
 
     try {
       playerRef.current?.destroy?.();
     } catch {}
 
-    const video = document.getElementById("adpoints-watch-player") as HTMLVideoElement | null;
-    if (video) {
-      video.pause();
-      video.currentTime = 0;
-      video.load();
-    }
+    video.pause();
+    video.currentTime = 0;
+    video.load();
 
-    setTimeout(() => {
-      try {
-        playerRef.current = fluidPlayer("adpoints-watch-player", {
-          layoutControls: {
-            primaryColor: "#35c979",
-            autoPlay: false,
-            mute: false,
-            allowDownload: false,
-            playbackRateEnabled: false,
-            allowTheatre: true,
-            miniPlayer: { enabled: false }
-          },
-          vastOptions: {
-            adList: [{ roll: "preRoll", vastTag: VAST_URL }]
-          }
-        });
-        setStatus("Clique sur Lecture pour démarrer la publicité.");
-        void logAudit("watch_ad_started", {}, "/watch-ad");
-      } catch (error) {
-        setIsPlaying(false);
-        setStatus(error instanceof Error ? error.message : "Impossible de lancer la publicité.");
-      }
-    }, 50);
+    try {
+      playerRef.current = fluidPlayer("adpoints-watch-player", {
+        layoutControls: {
+          primaryColor: "#35c979",
+          autoPlay: false,
+          mute: false,
+          allowDownload: false,
+          playbackRateEnabled: false,
+          allowTheatre: true,
+          miniPlayer: { enabled: false }
+        },
+        vastOptions: {
+          adList: [
+            {
+              roll: "preRoll",
+              vastTag: VAST_URL
+            }
+          ]
+        }
+      });
+
+      setStatus("Clique maintenant sur ▶ dans le lecteur : la publicité AdCash doit passer avant la vidéo.");
+      void logAudit("watch_ad_started", { vast: true }, "/watch-ad");
+    } catch (error) {
+      setIsPlaying(false);
+      setStatus(error instanceof Error ? error.message : "Impossible de lancer la publicité.");
+    }
   }
 
   return (
@@ -87,16 +104,16 @@ export default function WatchAdPage() {
         <span className="eyebrow">GAGNE DES ADPOINTS</span>
         <h1>🎬 Regarde une publicité</h1>
         <p className="muted" style={{ maxWidth: 680, margin: "12px auto 0", lineHeight: 1.6 }}>
-          Regarde la publicité jusqu’à la fin. Cette première version sert à valider la diffusion vidéo AdCash.
-          Les récompenses sont volontairement désactivées tant que le système de validation n’est pas finalisé.
+          Lance une publicité vidéo. Une vraie vidéo de contenu est chargée derrière le lecteur afin que le pré-roll VAST
+          puisse être demandé correctement.
         </p>
 
         <button
           onClick={launchAd}
-          disabled={!ready || isPlaying}
+          disabled={!ready}
           style={{ marginTop: 24, minWidth: 250 }}
         >
-          {!ready ? "Chargement…" : isPlaying ? "Publicité en cours…" : "▶ Regarder une publicité"}
+          {!ready ? "Chargement…" : "▶ Regarder une publicité"}
         </button>
 
         <p className="notice" style={{ marginTop: 18 }}>{status}</p>
@@ -104,21 +121,24 @@ export default function WatchAdPage() {
 
       <section className="profileBox" style={{ marginTop: 24 }}>
         <h2>Lecteur vidéo</h2>
+        <p className="muted">Après avoir lancé la session, appuie sur ▶ dans le lecteur pour déclencher le pré-roll.</p>
         <video
           id="adpoints-watch-player"
           controls
           playsInline
           preload="metadata"
           style={{ width: "100%", maxHeight: 560, background: "#000", borderRadius: 18 }}
-        />
+        >
+          <source src={SAMPLE_VIDEO} type="video/mp4" />
+        </video>
       </section>
 
       <section className="profileBox" style={{ marginTop: 24 }}>
         <h2>Comment ça fonctionne</h2>
         <p className="muted">
-          Une publicité In-stream AdCash est demandée quand tu lances le visionnage. Pour le moment,
-          aucun AdPoint n’est crédité automatiquement : nous devons d’abord valider le mécanisme de fin de pub
-          et les conditions de récompense du fournisseur.
+          Le lecteur doit avoir une vraie vidéo de contenu en arrière-plan. Lorsque tu appuies sur Lecture,
+          Fluid Player demande d’abord le pré-roll VAST AdCash, puis lance la vidéo de démonstration.
+          Aucun AdPoint n’est encore crédité automatiquement.
         </p>
       </section>
     </main>
