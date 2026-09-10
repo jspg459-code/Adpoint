@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { logAudit } from "../lib/audit";
 
-const VAST_URL = "https://youradexchange.com/video/select.php?r=1213948";
+const VAST_URL = "https://youradexchange.com/video/select.php?r=12139498";
 const TECHNICAL_VIDEO = "https://media.w3.org/2010/05/sintel/trailer.mp4";
 const FLUID_PLAYER_SRC = "https://cdn.fluidplayer.com/v3/current/fluidplayer.min.js";
 const FLUID_PLAYER_CSS = "https://cdn.fluidplayer.com/v3/current/fluidplayer.min.css";
