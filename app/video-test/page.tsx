@@ -9,6 +9,7 @@ declare global {
 }
 
 const SAMPLE_VIDEO = "https://media.w3.org/2010/05/sintel/trailer.mp4";
+const DEFAULT_VAST_URL = "https://youradexchange.com/video/select.php?r=1213948";
 
 type Diagnostic = {
   state: "idle" | "loading" | "success" | "warning" | "error";
@@ -17,15 +18,18 @@ type Diagnostic = {
 };
 
 export default function VideoTestPage() {
-  const [vastUrl, setVastUrl] = useState("");
+  const [vastUrl, setVastUrl] = useState(DEFAULT_VAST_URL);
   const [ready, setReady] = useState(false);
-  const [status, setStatus] = useState("Colle ton URL VAST AdCash puis lance le test.");
+  const [status, setStatus] = useState("Lecteur prêt : lance le test puis clique sur Lecture.");
   const [diagnostic, setDiagnostic] = useState<Diagnostic>({
     state: "idle",
-    title: "Diagnostic en attente",
-    detail: "Lance le test pour analyser le comportement du tag VAST."
+    title: "Test prêt",
+    detail: "Le lecteur utilisera le tag VAST In-stream AdCash comme pré-roll avant la vidéo de démonstration."
   });
+
   const playerRef = useRef<any>(null);
+  const adStartedRef = useRef(false);
+  const adFinishedRef = useRef(false);
 
   useEffect(() => {
     const saved = localStorage.getItem("adpoints_vast_test_url");
@@ -42,7 +46,7 @@ export default function VideoTestPage() {
     script.onload = () => setReady(true);
     script.onerror = () => {
       setReady(false);
-      setStatus("Impossible de charger le lecteur vidéo.");
+      setStatus("Impossible de charger Fluid Player.");
       setDiagnostic({
         state: "error",
         title: "Lecteur indisponible",
@@ -55,7 +59,7 @@ export default function VideoTestPage() {
   function startTest() {
     const url = vastUrl.trim();
 
-    if (!url.startsWith("http")) {
+    if (!url.startsWith("http://") && !url.startsWith("https://")) {
       setStatus("Colle l’URL VAST complète générée par AdCash.");
       setDiagnostic({
         state: "error",
@@ -71,31 +75,60 @@ export default function VideoTestPage() {
     }
 
     localStorage.setItem("adpoints_vast_test_url", url);
+    adStartedRef.current = false;
+    adFinishedRef.current = false;
 
     try {
       playerRef.current?.destroy?.();
     } catch {}
 
-    setStatus("Analyse du tag VAST puis lancement du lecteur…");
+    setStatus("Test VAST lancé : la publicité doit être demandée avant la vidéo.");
     setDiagnostic({
       state: "loading",
-      title: "Analyse en cours",
-      detail: "Nous attendons la réponse du lecteur publicitaire."
+      title: "Demande publicitaire en cours",
+      detail: "Le tag VAST est envoyé au lecteur. Clique sur Lecture pour déclencher le pré-roll."
     });
 
     const video = document.getElementById("adpoints-vast-player") as HTMLVideoElement | null;
-    if (video) {
-      video.pause();
-      video.currentTime = 0;
-      video.load();
-    }
+    if (!video) return;
+
+    // Réinitialise complètement la vidéo de contenu avant de recréer le player.
+    video.pause();
+    video.currentTime = 0;
+    video.load();
+
+    // Si le contenu démarre directement sans qu'une publicité n'ait été détectée,
+    // le test l'indique clairement au lieu de faire croire que la vidéo principale
+    // est une publicité.
+    const handleContentPlay = () => {
+      if (!adStartedRef.current) {
+        setStatus("⚠️ La vidéo de démonstration a démarré directement.");
+        setDiagnostic({
+          state: "warning",
+          title: "Pré-roll non observé",
+          detail: "Aucune publicité VAST n’a été détectée avant la vidéo. Cela peut indiquer un No Fill, une zone inactive, une campagne non disponible ou une incompatibilité du tag pour cette requête."
+        });
+      } else if (adFinishedRef.current) {
+        setStatus("🟢 Publicité terminée, puis vidéo de démonstration lancée.");
+      }
+    };
+
+    video.addEventListener("play", handleContentPlay, { once: true });
 
     setTimeout(() => {
       try {
+        // Configuration officielle minimale Fluid Player + VAST pre-roll.
+        // On laisse Fluid Player gérer directement la requête VAST et le rendu.
         playerRef.current = window.fluidPlayer?.("adpoints-vast-player", {
           layoutControls: {
             primaryColor: "#48c78e",
-            posterImage: ""
+            playButtonShowing: true,
+            autoPlay: false,
+            mute: false,
+            allowDownload: false,
+            playbackRateEnabled: false,
+            allowTheatre: true,
+            miniPlayer: { enabled: false }
           },
           vastOptions: {
             adList: [
@@ -103,51 +136,11 @@ export default function VideoTestPage() {
                 roll: "preRoll",
                 vastTag: url
               }
-            ],
-            onVastAdStarted: () => {
-              setStatus("🟢 Publicité détectée : lecture en cours.");
-              setDiagnostic({
-                state: "success",
-                title: "Publicité VAST détectée",
-                detail: "AdCash a fourni une publicité et elle est en cours de lecture."
-              });
-            },
-            onVastAdEnded: () => {
-              setStatus("🟢 Publicité terminée.");
-              setDiagnostic({
-                state: "success",
-                title: "Publicité terminée",
-                detail: "La publicité s’est terminée normalement."
-              });
-            },
-            onVastAdSkipped: () => {
-              setStatus("🟡 Publicité passée par l’utilisateur.");
-              setDiagnostic({
-                state: "warning",
-                title: "Publicité skippée",
-                detail: "Une publicité a été détectée mais elle n’a pas été regardée jusqu’à la fin."
-              });
-            },
-            onVastAdError: (error: any) => {
-              setStatus("🔴 Erreur VAST : aucune publicité n’a pu être lancée.");
-              setDiagnostic({
-                state: "error",
-                title: "Erreur VAST / No Fill possible",
-                detail: error?.message || "Le tag n’a pas fourni de publicité lisible au lecteur. Cela peut être un No Fill, une zone inactive ou une erreur de configuration."
-              });
-            },
-            onVastNoAd: () => {
-              setStatus("🟡 Aucune publicité disponible pour ce test.");
-              setDiagnostic({
-                state: "warning",
-                title: "Aucune publicité disponible",
-                detail: "Le lecteur fonctionne, mais aucune publicité n’a été fournie pour cette requête (No Fill possible)."
-              });
-            }
+            ]
           }
         });
 
-        setStatus("Test lancé : clique sur Lecture. Le diagnostic se mettra à jour automatiquement.");
+        setStatus("Test prêt : clique sur Lecture. Le pré-roll AdCash doit passer avant la vidéo.");
       } catch (error) {
         setStatus("Erreur lors du lancement du lecteur.");
         setDiagnostic({
@@ -171,8 +164,7 @@ export default function VideoTestPage() {
         <span className="eyebrow">TEST ADCASH</span>
         <h1>🎬 Test In-stream Video</h1>
         <p className="muted">
-          Cette page vérifie si le tag VAST AdCash fournit réellement une publicité.
-          Aucun AdPoint n’est distribué pendant ce test.
+          Test technique du tag VAST AdCash. Aucun AdPoint n’est distribué pendant ce test.
         </p>
 
         <label style={{ display: "block", marginTop: 24, fontWeight: 700 }}>
@@ -182,12 +174,11 @@ export default function VideoTestPage() {
         <textarea
           value={vastUrl}
           onChange={(e) => setVastUrl(e.target.value)}
-          placeholder="https://.../video/select.php?r=..."
           style={{ width: "100%", minHeight: 110, marginTop: 10, padding: 14, borderRadius: 12 }}
         />
 
         <button onClick={startTest} disabled={!ready} style={{ marginTop: 16 }}>
-          {ready ? "▶ Lancer le test vidéo" : "Chargement du lecteur…"}
+          {ready ? "▶ Lancer le test VAST" : "Chargement du lecteur…"}
         </button>
 
         <p className="notice" style={{ marginTop: 18 }}>{status}</p>
@@ -207,8 +198,7 @@ export default function VideoTestPage() {
       <section className="profileBox" style={{ marginTop: 24 }}>
         <h2>Lecteur de test</h2>
         <p className="muted">
-          Une vraie publicité doit apparaître avant la vidéo de démonstration.
-          Si la vidéo de démonstration démarre directement, regarde le diagnostic ci-dessus.
+          Clique sur Lecture. Si une campagne est disponible, la publicité In-stream doit apparaître avant la vidéo.
         </p>
 
         <video
@@ -223,11 +213,11 @@ export default function VideoTestPage() {
       </section>
 
       <section className="profileBox" style={{ marginTop: 24 }}>
-        <h2>📋 Résultat attendu</h2>
+        <h2>📋 Comment interpréter le test</h2>
         <p className="muted">
-          🟢 Publicité détectée = le tag fonctionne.<br />
-          🟡 Aucune publicité disponible = probablement No Fill ou zone sans campagne disponible.<br />
-          🔴 Erreur VAST = URL, zone ou réponse publicitaire à vérifier.
+          🟢 Une publicité apparaît avant la vidéo = le tag délivre une campagne.<br />
+          🟡 La vidéo démarre directement = aucun pré-roll n’a été fourni pour cette requête (No Fill ou disponibilité).<br />
+          🔴 Erreur du lecteur = problème de chargement ou de configuration à vérifier.
         </p>
       </section>
     </main>
