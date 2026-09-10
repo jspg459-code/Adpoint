@@ -8,6 +8,7 @@ import { logAudit } from "../lib/audit";
 const VAST_URL = "https://youradexchange.com/video/select.php?r=1213948";
 const TECHNICAL_VIDEO = "https://media.w3.org/2010/05/sintel/trailer.mp4";
 const FLUID_PLAYER_SRC = "https://cdn.fluidplayer.com/v3/current/fluidplayer.min.js";
+const FLUID_PLAYER_CSS = "https://cdn.fluidplayer.com/v3/current/fluidplayer.min.css";
 
 export default function WatchAdPage() {
   const router = useRouter();
@@ -19,6 +20,14 @@ export default function WatchAdPage() {
   const fallbackTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
+    let css = document.querySelector('link[href="' + FLUID_PLAYER_CSS + '"]') as HTMLLinkElement | null;
+    if (!css) {
+      css = document.createElement("link");
+      css.rel = "stylesheet";
+      css.href = FLUID_PLAYER_CSS;
+      document.head.appendChild(css);
+    }
+
     const existing = document.querySelector('script[src="' + FLUID_PLAYER_SRC + '"]') as HTMLScriptElement | null;
 
     if ((window as any).fluidPlayer) {
@@ -36,7 +45,6 @@ export default function WatchAdPage() {
 
     return () => {
       if (fallbackTimerRef.current) window.clearTimeout(fallbackTimerRef.current);
-      if (!existing) script.remove();
     };
   }, []);
 
@@ -84,7 +92,7 @@ export default function WatchAdPage() {
     finishingRef.current = false;
     adStartedRef.current = false;
     clearFallback();
-    setStatus("Chargement de la publicité…");
+    setStatus("Connexion à AdCash et chargement de la publicité…");
 
     try {
       playerRef.current?.destroy?.();
@@ -96,10 +104,12 @@ export default function WatchAdPage() {
 
     try {
       playerRef.current = fluidPlayer("adpoints-watch-player", {
+        debug: true,
         layoutControls: {
           primaryColor: "#35c979",
           autoPlay: false,
           mute: false,
+          playButtonShowing: true,
           allowDownload: false,
           playbackRateEnabled: false,
           allowTheatre: false,
@@ -112,49 +122,56 @@ export default function WatchAdPage() {
               vastTag: VAST_URL
             }
           ],
-          vastVideoStartedCallback: () => {
-            adStartedRef.current = true;
-            clearFallback();
-            setStatus("Publicité en cours…");
-            void logAudit("watch_ad_vast_started", { vast: true }, "/watch-ad");
-          },
-          vastVideoEndedCallback: () => {
-            void logAudit("watch_ad_vast_completed", { vast: true }, "/watch-ad");
-            finishAd("Publicité terminée. Retour au tableau de bord…");
-          },
-          vastVideoSkippedCallback: () => {
-            void logAudit("watch_ad_vast_skipped", { vast: true }, "/watch-ad");
-            finishAd("Publicité passée. Retour au tableau de bord…");
-          },
-          noVastVideoCallback: () => {
-            clearFallback();
-            stopTechnicalVideo("Aucune publicité disponible pour le moment. Réessaie plus tard.");
+          vastTimeout: 10000,
+          showPlayButton: true,
+          vastAdvanced: {
+            vastLoadedCallback: () => {
+              setStatus("Publicité AdCash trouvée, démarrage…");
+            },
+            noVastVideoCallback: () => {
+              clearFallback();
+              stopTechnicalVideo("AdCash n’a renvoyé aucune publicité disponible (No Fill). Aucune récompense.");
+              void logAudit("watch_ad_no_vast_fill", { vast: true }, "/watch-ad");
+            },
+            vastVideoSkippedCallback: () => {
+              void logAudit("watch_ad_vast_skipped", { vast: true }, "/watch-ad");
+              finishAd("Publicité passée. Retour au tableau de bord…");
+            },
+            vastVideoEndedCallback: () => {
+              void logAudit("watch_ad_vast_completed", { vast: true }, "/watch-ad");
+              finishAd("Publicité terminée. Retour au tableau de bord…");
+            }
           }
         }
       });
 
       /*
-       * Important sur mobile : on démarre le lecteur directement depuis le clic
-       * sur le bouton. Le pré-roll VAST est ainsi déclenché dans le geste utilisateur
-       * au lieu de laisser l'utilisateur lancer uniquement la vidéo technique.
+       * Fluid Player remplace la méthode play() de la balise vidéo pour déclencher
+       * le pré-roll. On utilise donc la balise vidéo directement dans le geste utilisateur.
        */
-      const playResult = playerRef.current?.play?.();
+      const playResult = video.play();
       if (playResult?.catch) {
         playResult.catch(() => {
-          setStatus("Appuie à nouveau sur le bouton pour autoriser la lecture.");
+          setStatus("Safari a bloqué la lecture. Appuie à nouveau sur ▶ dans le lecteur.");
         });
       }
 
-      /*
-       * Sécurité : si aucun événement VAST ne démarre, on bloque la vidéo technique.
-       * Elle ne doit jamais être regardée seule comme une publicité AdPoints.
-       */
       fallbackTimerRef.current = window.setTimeout(() => {
         if (!adStartedRef.current && !finishingRef.current) {
-          stopTechnicalVideo("La publicité n’a pas démarré. Aucune récompense n’a été attribuée.");
-          void logAudit("watch_ad_no_vast_fill", { vast: true }, "/watch-ad");
+          stopTechnicalVideo("La publicité AdCash n’a pas démarré. Aucune récompense n’a été attribuée.");
+          void logAudit("watch_ad_vast_timeout", { vast: true }, "/watch-ad");
         }
-      }, 6000);
+      }, 12000);
+
+      video.addEventListener("play", () => {
+        const wrapper = document.querySelector(".fluid_video_wrapper");
+        const adLayer = wrapper?.querySelector(".vast_video_loading, .vast_clickthrough_layer");
+        if (adLayer) {
+          adStartedRef.current = true;
+          clearFallback();
+          setStatus("Publicité en cours…");
+        }
+      }, { once: true });
 
       void logAudit("watch_ad_started", { vast: true }, "/watch-ad");
     } catch (error) {
@@ -204,8 +221,8 @@ export default function WatchAdPage() {
         </video>
 
         <p className="muted" style={{ marginTop: 14 }}>
-          Le lecteur technique est utilisé uniquement pour permettre l’affichage du pré-roll publicitaire.
-          S’il n’y a pas de publicité disponible, la vidéo technique est automatiquement arrêtée.
+          La vidéo technique sert uniquement de support au format In-stream. Si AdCash ne fournit aucune publicité,
+          elle est arrêtée automatiquement et aucune récompense n’est attribuée.
         </p>
       </section>
 
