@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { supabase } from "../lib/supabase";
 import { logAudit } from "../lib/audit";
 
 const VAST_URL = "https://youradexchange.com/video/select.php?r=1213948";
@@ -25,7 +24,9 @@ export default function WatchAdPage() {
   }, []);
 
   function launchAd() {
-    if (!ready || !window.fluidPlayer) {
+    const fluidPlayer = (window as any).fluidPlayer;
+
+    if (!ready || !fluidPlayer) {
       setStatus("Le lecteur est encore en cours de chargement…");
       return;
     }
@@ -48,7 +49,7 @@ export default function WatchAdPage() {
 
     setTimeout(() => {
       try {
-        playerRef.current = window.fluidPlayer?.("adpoints-watch-player", {
+        playerRef.current = fluidPlayer("adpoints-watch-player", {
           layoutControls: {
             primaryColor: "#35c979",
             autoPlay: false,
