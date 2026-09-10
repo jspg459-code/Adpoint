@@ -2,17 +2,19 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { logAudit } from "../lib/audit";
 
 const VAST_URL = "https://youradexchange.com/video/select.php?r=1213948";
-const SAMPLE_VIDEO = "https://media.w3.org/2010/05/sintel/trailer.mp4";
+const TECHNICAL_VIDEO = "https://media.w3.org/2010/05/sintel/trailer.mp4";
 const FLUID_PLAYER_SRC = "https://cdn.fluidplayer.com/v3/current/fluidplayer.min.js";
 
 export default function WatchAdPage() {
+  const router = useRouter();
   const [ready, setReady] = useState(false);
   const [status, setStatus] = useState("Prêt à regarder une publicité.");
-  const [isPlaying, setIsPlaying] = useState(false);
   const playerRef = useRef<any>(null);
+  const finishingRef = useRef(false);
 
   useEffect(() => {
     const existing = document.querySelector('script[src="' + FLUID_PLAYER_SRC + '"]') as HTMLScriptElement | null;
@@ -29,11 +31,20 @@ export default function WatchAdPage() {
     script.onerror = () => setStatus("Impossible de charger le lecteur vidéo.");
 
     if (!existing) document.head.appendChild(script);
-
     return () => {
       if (!existing) script.remove();
     };
   }, []);
+
+  function finishAd(message: string) {
+    if (finishingRef.current) return;
+    finishingRef.current = true;
+    setStatus(message);
+
+    window.setTimeout(() => {
+      router.push("/dashboard");
+    }, 1800);
+  }
 
   function launchAd() {
     const fluidPlayer = (window as any).fluidPlayer;
@@ -49,7 +60,7 @@ export default function WatchAdPage() {
       return;
     }
 
-    setIsPlaying(true);
+    finishingRef.current = false;
     setStatus("Préparation de la publicité…");
 
     try {
@@ -68,7 +79,7 @@ export default function WatchAdPage() {
           mute: false,
           allowDownload: false,
           playbackRateEnabled: false,
-          allowTheatre: true,
+          allowTheatre: false,
           miniPlayer: { enabled: false }
         },
         vastOptions: {
@@ -77,14 +88,28 @@ export default function WatchAdPage() {
               roll: "preRoll",
               vastTag: VAST_URL
             }
-          ]
+          ],
+          vastVideoStartedCallback: () => {
+            setStatus("Publicité en cours…");
+            void logAudit("watch_ad_vast_started", { vast: true }, "/watch-ad");
+          },
+          vastVideoEndedCallback: () => {
+            void logAudit("watch_ad_vast_completed", { vast: true }, "/watch-ad");
+            finishAd("Publicité terminée. Retour au tableau de bord…");
+          },
+          vastVideoSkippedCallback: () => {
+            void logAudit("watch_ad_vast_skipped", { vast: true }, "/watch-ad");
+            finishAd("Publicité passée. Retour au tableau de bord…");
+          },
+          noVastVideoCallback: () => {
+            setStatus("Aucune publicité disponible pour le moment. Réessaie plus tard.");
+          }
         }
       });
 
-      setStatus("Clique maintenant sur ▶ dans le lecteur : la publicité AdCash doit passer avant la vidéo.");
+      setStatus("Appuie sur ▶ pour lancer la publicité.");
       void logAudit("watch_ad_started", { vast: true }, "/watch-ad");
     } catch (error) {
-      setIsPlaying(false);
       setStatus(error instanceof Error ? error.message : "Impossible de lancer la publicité.");
     }
   }
@@ -104,15 +129,10 @@ export default function WatchAdPage() {
         <span className="eyebrow">GAGNE DES ADPOINTS</span>
         <h1>🎬 Regarde une publicité</h1>
         <p className="muted" style={{ maxWidth: 680, margin: "12px auto 0", lineHeight: 1.6 }}>
-          Lance une publicité vidéo. Une vraie vidéo de contenu est chargée derrière le lecteur afin que le pré-roll VAST
-          puisse être demandé correctement.
+          Lance une publicité et regarde-la directement dans le lecteur AdPoints.
         </p>
 
-        <button
-          onClick={launchAd}
-          disabled={!ready}
-          style={{ marginTop: 24, minWidth: 250 }}
-        >
+        <button onClick={launchAd} disabled={!ready} style={{ marginTop: 24, minWidth: 250 }}>
           {!ready ? "Chargement…" : "▶ Regarder une publicité"}
         </button>
 
@@ -120,8 +140,11 @@ export default function WatchAdPage() {
       </section>
 
       <section className="profileBox" style={{ marginTop: 24 }}>
-        <h2>Lecteur vidéo</h2>
-        <p className="muted">Après avoir lancé la session, appuie sur ▶ dans le lecteur pour déclencher le pré-roll.</p>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <h2 style={{ margin: 0 }}>Publicité</h2>
+          <span className="eyebrow">ADPOINTS</span>
+        </div>
+
         <video
           id="adpoints-watch-player"
           controls
@@ -129,16 +152,19 @@ export default function WatchAdPage() {
           preload="metadata"
           style={{ width: "100%", maxHeight: 560, background: "#000", borderRadius: 18 }}
         >
-          <source src={SAMPLE_VIDEO} type="video/mp4" />
+          <source src={TECHNICAL_VIDEO} type="video/mp4" />
         </video>
+
+        <p className="muted" style={{ marginTop: 14 }}>
+          La vidéo technique sert uniquement au fonctionnement du format In-stream et n’est pas présentée comme du contenu AdPoints.
+        </p>
       </section>
 
       <section className="profileBox" style={{ marginTop: 24 }}>
-        <h2>Comment ça fonctionne</h2>
+        <h2>Une seule expérience</h2>
         <p className="muted">
-          Le lecteur doit avoir une vraie vidéo de contenu en arrière-plan. Lorsque tu appuies sur Lecture,
-          Fluid Player demande d’abord le pré-roll VAST AdCash, puis lance la vidéo de démonstration.
-          Aucun AdPoint n’est encore crédité automatiquement.
+          Après la publicité, tu es automatiquement renvoyé vers ton tableau de bord.
+          La vidéo de démonstration ne doit plus être regardée comme une étape supplémentaire.
         </p>
       </section>
     </main>
