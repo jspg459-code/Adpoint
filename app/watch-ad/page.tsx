@@ -122,34 +122,33 @@ export default function WatchAdPage() {
               vastTag: VAST_URL
             }
           ],
-          vastTimeout: 10000,
-          showPlayButton: true,
-          vastAdvanced: {
-            vastLoadedCallback: () => {
-              setStatus("Publicité AdCash trouvée, démarrage…");
-            },
-            noVastVideoCallback: () => {
-              clearFallback();
-              stopTechnicalVideo("AdCash n’a renvoyé aucune publicité disponible (No Fill). Aucune récompense.");
-              void logAudit("watch_ad_no_vast_fill", { vast: true }, "/watch-ad");
-            },
-            vastVideoSkippedCallback: () => {
-              void logAudit("watch_ad_vast_skipped", { vast: true }, "/watch-ad");
-              finishAd("Publicité passée. Retour au tableau de bord…");
-            },
-            vastVideoEndedCallback: () => {
-              void logAudit("watch_ad_vast_completed", { vast: true }, "/watch-ad");
-              finishAd("Publicité terminée. Retour au tableau de bord…");
-            }
+          vastVideoStartedCallback: () => {
+            adStartedRef.current = true;
+            clearFallback();
+            setStatus("Publicité AdCash en cours…");
+            void logAudit("watch_ad_vast_started", { vast: true }, "/watch-ad");
+          },
+          vastVideoEndedCallback: () => {
+            void logAudit("watch_ad_vast_completed", { vast: true }, "/watch-ad");
+            finishAd("Publicité terminée. Retour au tableau de bord…");
+          },
+          vastVideoSkippedCallback: () => {
+            void logAudit("watch_ad_vast_skipped", { vast: true }, "/watch-ad");
+            finishAd("Publicité passée. Retour au tableau de bord…");
+          },
+          noVastVideoCallback: () => {
+            clearFallback();
+            stopTechnicalVideo("Aucune publicité disponible pour le moment. Réessaie plus tard.");
+            void logAudit("watch_ad_no_vast_fill", { vast: true }, "/watch-ad");
           }
         }
       });
 
       /*
-       * Fluid Player remplace la méthode play() de la balise vidéo pour déclencher
-       * le pré-roll. On utilise donc la balise vidéo directement dans le geste utilisateur.
+       * Important sur mobile : on démarre Fluid Player directement depuis le geste
+       * utilisateur afin qu'il puisse déclencher le pré-roll VAST avant la vidéo.
        */
-      const playResult = video.play();
+      const playResult = playerRef.current?.play?.();
       if (playResult?.catch) {
         playResult.catch(() => {
           setStatus("Safari a bloqué la lecture. Appuie à nouveau sur ▶ dans le lecteur.");
@@ -158,20 +157,10 @@ export default function WatchAdPage() {
 
       fallbackTimerRef.current = window.setTimeout(() => {
         if (!adStartedRef.current && !finishingRef.current) {
-          stopTechnicalVideo("La publicité AdCash n’a pas démarré. Aucune récompense n’a été attribuée.");
+          stopTechnicalVideo("La publicité n’a pas démarré. Aucune récompense n’a été attribuée.");
           void logAudit("watch_ad_vast_timeout", { vast: true }, "/watch-ad");
         }
-      }, 12000);
-
-      video.addEventListener("play", () => {
-        const wrapper = document.querySelector(".fluid_video_wrapper");
-        const adLayer = wrapper?.querySelector(".vast_video_loading, .vast_clickthrough_layer");
-        if (adLayer) {
-          adStartedRef.current = true;
-          clearFallback();
-          setStatus("Publicité en cours…");
-        }
-      }, { once: true });
+      }, 10000);
 
       void logAudit("watch_ad_started", { vast: true }, "/watch-ad");
     } catch (error) {
