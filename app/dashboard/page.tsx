@@ -130,6 +130,19 @@ export default function Dashboard(){
    {message&&<div className="notice">{message}</div>}
   </section>}
 
+  {isAdmin && (
+   <section>
+    <h2>Tests publicitaires</h2>
+    <div className="activityGrid">
+     <article className="activity">
+      <h3>🎬 Test vidéo AdCash</h3>
+      <p>Teste une zone In-stream VAST sans distribuer d’AdPoints.</p>
+      <Link href="/video-test" className="shopBrowseButton">Lancer le test →</Link>
+     </article>
+    </div>
+   </section>
+  )}
+
   {shopChecked && shopEnabled && (
    <section>
     <h2>Boutique d’échange</h2>
