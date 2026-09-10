@@ -15,6 +15,8 @@ export default function WatchAdPage() {
   const [status, setStatus] = useState("Prêt à regarder une publicité.");
   const playerRef = useRef<any>(null);
   const finishingRef = useRef(false);
+  const adStartedRef = useRef(false);
+  const fallbackTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const existing = document.querySelector('script[src="' + FLUID_PLAYER_SRC + '"]') as HTMLScriptElement | null;
@@ -28,17 +30,27 @@ export default function WatchAdPage() {
     script.src = FLUID_PLAYER_SRC;
     script.async = true;
     script.onload = () => setReady(true);
-    script.onerror = () => setStatus("Impossible de charger le lecteur vidéo.");
+    script.onerror = () => setStatus("Impossible de charger le lecteur publicitaire.");
 
     if (!existing) document.head.appendChild(script);
+
     return () => {
+      if (fallbackTimerRef.current) window.clearTimeout(fallbackTimerRef.current);
       if (!existing) script.remove();
     };
   }, []);
 
+  function clearFallback() {
+    if (fallbackTimerRef.current) {
+      window.clearTimeout(fallbackTimerRef.current);
+      fallbackTimerRef.current = null;
+    }
+  }
+
   function finishAd(message: string) {
     if (finishingRef.current) return;
     finishingRef.current = true;
+    clearFallback();
     setStatus(message);
 
     window.setTimeout(() => {
@@ -46,22 +58,33 @@ export default function WatchAdPage() {
     }, 1800);
   }
 
+  function stopTechnicalVideo(message: string) {
+    const video = document.getElementById("adpoints-watch-player") as HTMLVideoElement | null;
+    if (video) {
+      video.pause();
+      video.currentTime = 0;
+    }
+    setStatus(message);
+  }
+
   function launchAd() {
     const fluidPlayer = (window as any).fluidPlayer;
 
     if (!ready || !fluidPlayer) {
-      setStatus("Le lecteur est encore en cours de chargement…");
+      setStatus("Le lecteur publicitaire est encore en cours de chargement…");
       return;
     }
 
     const video = document.getElementById("adpoints-watch-player") as HTMLVideoElement | null;
     if (!video) {
-      setStatus("Lecteur vidéo introuvable.");
+      setStatus("Lecteur publicitaire introuvable.");
       return;
     }
 
     finishingRef.current = false;
-    setStatus("Préparation de la publicité…");
+    adStartedRef.current = false;
+    clearFallback();
+    setStatus("Chargement de la publicité…");
 
     try {
       playerRef.current?.destroy?.();
@@ -90,6 +113,8 @@ export default function WatchAdPage() {
             }
           ],
           vastVideoStartedCallback: () => {
+            adStartedRef.current = true;
+            clearFallback();
             setStatus("Publicité en cours…");
             void logAudit("watch_ad_vast_started", { vast: true }, "/watch-ad");
           },
@@ -102,15 +127,38 @@ export default function WatchAdPage() {
             finishAd("Publicité passée. Retour au tableau de bord…");
           },
           noVastVideoCallback: () => {
-            setStatus("Aucune publicité disponible pour le moment. Réessaie plus tard.");
+            clearFallback();
+            stopTechnicalVideo("Aucune publicité disponible pour le moment. Réessaie plus tard.");
           }
         }
       });
 
-      setStatus("Appuie sur ▶ pour lancer la publicité.");
+      /*
+       * Important sur mobile : on démarre le lecteur directement depuis le clic
+       * sur le bouton. Le pré-roll VAST est ainsi déclenché dans le geste utilisateur
+       * au lieu de laisser l'utilisateur lancer uniquement la vidéo technique.
+       */
+      const playResult = playerRef.current?.play?.();
+      if (playResult?.catch) {
+        playResult.catch(() => {
+          setStatus("Appuie à nouveau sur le bouton pour autoriser la lecture.");
+        });
+      }
+
+      /*
+       * Sécurité : si aucun événement VAST ne démarre, on bloque la vidéo technique.
+       * Elle ne doit jamais être regardée seule comme une publicité AdPoints.
+       */
+      fallbackTimerRef.current = window.setTimeout(() => {
+        if (!adStartedRef.current && !finishingRef.current) {
+          stopTechnicalVideo("La publicité n’a pas démarré. Aucune récompense n’a été attribuée.");
+          void logAudit("watch_ad_no_vast_fill", { vast: true }, "/watch-ad");
+        }
+      }, 6000);
+
       void logAudit("watch_ad_started", { vast: true }, "/watch-ad");
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Impossible de lancer la publicité.");
+      stopTechnicalVideo(error instanceof Error ? error.message : "Impossible de lancer la publicité.");
     }
   }
 
@@ -156,15 +204,16 @@ export default function WatchAdPage() {
         </video>
 
         <p className="muted" style={{ marginTop: 14 }}>
-          La vidéo technique sert uniquement au fonctionnement du format In-stream et n’est pas présentée comme du contenu AdPoints.
+          Le lecteur technique est utilisé uniquement pour permettre l’affichage du pré-roll publicitaire.
+          S’il n’y a pas de publicité disponible, la vidéo technique est automatiquement arrêtée.
         </p>
       </section>
 
       <section className="profileBox" style={{ marginTop: 24 }}>
         <h2>Une seule expérience</h2>
         <p className="muted">
-          Après la publicité, tu es automatiquement renvoyé vers ton tableau de bord.
-          La vidéo de démonstration ne doit plus être regardée comme une étape supplémentaire.
+          Une récompense ne pourra être attribuée que par le système AdPoints après validation complète
+          de l’expérience publicitaire.
         </p>
       </section>
     </main>
