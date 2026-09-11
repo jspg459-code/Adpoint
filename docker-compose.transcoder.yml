@@ -1,0 +1,14 @@
+services:
+  iptv-transcoder:
+    build: ./transcoder
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: "8080"
+      TRANSCODER_SECRET: "CHANGE_ME_WITH_A_LONG_RANDOM_SECRET"
+      ALLOWED_UPSTREAM_HOSTS: "YOUR_AUTHORIZED_STREAM_HOST"
+    volumes:
+      - hls-cache:/tmp/adpoints-hls
+volumes:
+  hls-cache:
