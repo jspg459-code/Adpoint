@@ -93,7 +93,6 @@ export default function IPTVPage(){
             hlsRef.current=hls;
             hls.on(Hls.Events.MEDIA_ATTACHED,()=>hls.loadSource(active.url));
             hls.on(Hls.Events.MANIFEST_PARSED,()=>{ if(!cancelled){setPlayerStatus("Lecture en cours."); video.play().catch(()=>undefined);} });
-            hls.on(Hls.Events.ERROR",()=>{});
             hls.on(Hls.Events.ERROR,(_e,data)=>{
               if(data.fatal){ hls.destroy(); hlsRef.current=null; if(!cancelled) setPlayerIndex(i=>i+1); }
             });
