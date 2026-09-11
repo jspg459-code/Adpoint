@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 type Credentials = { server: string; username: string; password: string };
 type Category = { category_id: string; category_name: string };
-type Stream = { stream_id: number; name: string; stream_icon?: string; category_id?: string; stream_type?: string };
+type Stream = { stream_id: number; name: string; stream_icon?: string; category_id?: string; stream_type?: string; direct_source?: string; container_extension?: string };
 
 async function api(credentials: Credentials, action = "player_api", categoryId?: string) {
   const res = await fetch("/api/xtream", {
@@ -28,6 +28,8 @@ export default function IPTVPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [selected, setSelected] = useState<Stream | null>(null);
   const [search, setSearch] = useState("");
+  const [playerError, setPlayerError] = useState("");
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   const normalizedServer = useMemo(() => credentials.server.trim().replace(/\/+$/, ""), [credentials.server]);
 
@@ -70,8 +72,9 @@ export default function IPTVPage() {
 
   const visible = streams.filter((s) => s.name?.toLowerCase().includes(search.toLowerCase()));
   const streamUrl = selected
-    ? normalizedServer + "/live/" + encodeURIComponent(credentials.username) + "/" + encodeURIComponent(credentials.password) + "/" + selected.stream_id + ".m3u8"
+    ? (selected.direct_source?.trim() || normalizedServer + "/live/" + encodeURIComponent(credentials.username) + "/" + encodeURIComponent(credentials.password) + "/" + selected.stream_id + ".m3u8")
     : "";
+  const playerUrl = streamUrl ? "/api/iptv-proxy?url=" + encodeURIComponent(streamUrl) : "";
 
   return (
     <main className="dash" style={{ maxWidth: 1400, margin: "0 auto", padding: "28px 18px 90px" }}>
@@ -102,13 +105,33 @@ export default function IPTVPage() {
           <section className="profileBox" style={{ marginTop: 28 }}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
               <div><span className="eyebrow">EN DIRECT</span><h1 style={{ margin: "6px 0" }}>📺 IPTV Player</h1></div>
-              <button onClick={() => { setConnected(false); setSelected(null); setStreams([]); }}>Déconnexion</button>
+              <button onClick={() => { setConnected(false); setSelected(null); setStreams([]); setPlayerError(""); }}>Déconnexion</button>
             </div>
             {selected ? (
               <div style={{ marginTop: 18 }}>
                 <h2>{selected.name}</h2>
-                <video controls autoPlay playsInline style={{ width: "100%", maxHeight: 650, background: "#000", borderRadius: 18 }} src={streamUrl} />
-                <p className="muted" style={{ marginTop: 10 }}>Si ton navigateur ne lit pas le flux HLS directement, l’intégration HLS.js peut être ajoutée.</p>
+                <video
+                  key={playerUrl}
+                  ref={videoRef}
+                  controls
+                  autoPlay
+                  playsInline
+                  preload="auto"
+                  style={{ width: "100%", maxHeight: 650, background: "#000", borderRadius: 18 }}
+                  src={playerUrl}
+                  onCanPlay={() => setPlayerError("")}
+                  onError={() => setPlayerError("Le flux n’a pas pu être lu. Le serveur peut bloquer la lecture ou le flux peut être indisponible.")}
+                />
+                {playerError ? (
+                  <div className="notice" style={{ marginTop: 12 }}>
+                    ⚠️ {playerError}
+                    <div style={{ marginTop: 10 }}>
+                      <button onClick={() => { const v = videoRef.current; if (v) { setPlayerError(""); v.load(); v.play().catch(() => {}); } }}>↻ Réessayer</button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="muted" style={{ marginTop: 10 }}>Lecture via le proxy AdPoints pour améliorer la compatibilité avec Safari/iPhone et éviter les problèmes CORS.</p>
+                )}
               </div>
             ) : (
               <div style={{ marginTop: 18, minHeight: 280, borderRadius: 18, background: "#000", display: "grid", placeItems: "center" }}>
@@ -133,7 +156,7 @@ export default function IPTVPage() {
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: 14, marginTop: 18 }}>
                 {visible.slice(0, 500).map((stream) => (
-                  <button key={stream.stream_id} onClick={() => setSelected(stream)} style={{ padding: 0, overflow: "hidden", textAlign: "left" }}>
+                  <button key={stream.stream_id} onClick={() => { setPlayerError(""); setSelected(stream); }} style={{ padding: 0, overflow: "hidden", textAlign: "left" }}>
                     <div style={{ height: 110, background: "#111", display: "grid", placeItems: "center" }}>
                       {stream.stream_icon ? <img src={stream.stream_icon} alt="" style={{ maxWidth: "70%", maxHeight: 80, objectFit: "contain" }} /> : "📺"}
                     </div>
