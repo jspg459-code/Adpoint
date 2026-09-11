@@ -58,25 +58,23 @@ export default function IPTVPage() {
     const pass = encodeURIComponent(credentials.password.trim());
     const liveBase = normalizedServer + "/live/" + user + "/" + pass + "/" + selected.stream_id;
 
-    const raw = [
-      liveBase + ".m3u8",
-      selected.direct_source?.trim() || "",
-      selected.container_extension ? liveBase + "." + selected.container_extension : "",
-      liveBase + ".ts",
-    ].filter(Boolean);
+    const direct = selected.direct_source?.trim() || "";
+    const m3u8 = liveBase + ".m3u8";
+    const extension = selected.container_extension ? liveBase + "." + selected.container_extension : "";
+    const ts = liveBase + ".ts";
 
+    // Ordre important : on privilégie la source fournie par le serveur,
+    // puis le HLS via notre proxy (CORS + playlists/segments réécrits).
+    const raw = [direct, m3u8, extension, ts].filter(Boolean);
     const urls: string[] = [];
-    for (const url of raw) {
-      if (!urls.includes(url)) urls.push(url);
-    }
 
-    // Pour les playlists HLS, on essaie aussi via le proxy afin de contourner
-    // les serveurs qui bloquent le navigateur à cause du CORS.
-    for (const url of [...urls]) {
-      if (/\.m3u8(?:$|[?#])/i.test(url)) {
-        const p = proxied(url);
-        if (!urls.includes(p)) urls.push(p);
+    for (const url of raw) {
+      const isHls = /\.m3u8(?:$|[?#])/i.test(url);
+      if (isHls) {
+        const viaProxy = proxied(url);
+        if (!urls.includes(viaProxy)) urls.push(viaProxy);
       }
+      if (!urls.includes(url)) urls.push(url);
     }
 
     return urls;
