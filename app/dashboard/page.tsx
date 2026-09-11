@@ -61,7 +61,12 @@ export default function Dashboard(){
   <header className="modernHeader cleanTopHeader">
    <Link href="/dashboard" className="textBrand">Ad<span>Points</span></Link>
    <nav className="cleanTextNav">
-    <Link href="/dashboard" className="active">Tableau de bord</Link><Link href="/ranking">Classement</Link><Link href="/profile">Mon profil</Link>{isAdmin&&<Link href="/admin">Administration</Link>}<button onClick={logout}>Déconnexion</button>
+    <Link href="/dashboard" className="active">Tableau de bord</Link>
+    <Link href="/ranking">Classement</Link>
+    <Link href="/iptv">📺 IPTV</Link>
+    <Link href="/profile">Mon profil</Link>
+    {isAdmin&&<Link href="/admin">Administration</Link>}
+    <button onClick={logout}>Déconnexion</button>
    </nav>
   </header>
   <section className="dashHero" style={{paddingBottom:"12px"}}><div><span className="eyebrow">BON RETOUR</span><h1>Bonjour {profile?.username||"👋"}</h1></div></section>
@@ -75,6 +80,11 @@ export default function Dashboard(){
      <h3>🎬 Regarder une publicité</h3>
      <p>Regarde une publicité vidéo et découvre notre système de récompense.</p>
      <Link href="/watch-ad" className="shopBrowseButton">Regarder une pub →</Link>
+    </article>
+    <article className="activity">
+     <h3>📺 Lecteur IPTV</h3>
+     <p>Connecte ton service Xtream autorisé et accède à tes chaînes depuis le lecteur.</p>
+     <Link href="/iptv" className="shopBrowseButton">Ouvrir le lecteur IPTV →</Link>
     </article>
     <article className="activity">
      <h3>✨ Ton solde</h3>
