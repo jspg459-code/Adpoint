@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type Credentials = { server: string; username: string; password: string };
 type Category = { category_id: string; category_name: string };
@@ -26,6 +26,10 @@ async function api(credentials: Credentials, action = "player_api", categoryId?:
   return json.data;
 }
 
+function proxied(url: string) {
+  return "/api/iptv-proxy?url=" + encodeURIComponent(url);
+}
+
 export default function IPTVPage() {
   const [credentials, setCredentials] = useState<Credentials>({ server: "", username: "", password: "" });
   const [connected, setConnected] = useState(false);
@@ -33,12 +37,14 @@ export default function IPTVPage() {
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [streams, setStreams] = useState<Stream[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [selectedCategory, setSelectedCategory] = useState("");
   const [selected, setSelected] = useState<Stream | null>(null);
   const [search, setSearch] = useState("");
   const [playerError, setPlayerError] = useState("");
   const [playerIndex, setPlayerIndex] = useState(0);
+  const [playerStatus, setPlayerStatus] = useState("");
   const videoRef = useRef<HTMLVideoElement>(null);
+  const hlsRef = useRef<{ destroy: () => void } | null>(null);
 
   const normalizedServer = useMemo(
     () => credentials.server.trim().replace(/\/+$/, ""),
@@ -50,23 +56,136 @@ export default function IPTVPage() {
 
     const user = encodeURIComponent(credentials.username.trim());
     const pass = encodeURIComponent(credentials.password.trim());
-    const base = normalizedServer + "/live/" + user + "/" + pass + "/" + selected.stream_id;
+    const liveBase = normalizedServer + "/live/" + user + "/" + pass + "/" + selected.stream_id;
 
-    // Beaucoup de serveurs Xtream annoncent "ts" dans l'API, mais proposent aussi
-    // une playlist HLS .m3u8. Safari/iPhone lit beaucoup mieux le HLS.
-    const urls = [
+    const raw = [
+      liveBase + ".m3u8",
       selected.direct_source?.trim() || "",
-      base + ".m3u8",
-      selected.container_extension ? base + "." + selected.container_extension : "",
+      selected.container_extension ? liveBase + "." + selected.container_extension : "",
+      liveBase + ".ts",
     ].filter(Boolean);
 
-    // Le proxy reste uniquement une solution de secours si la lecture directe échoue.
-    const withProxy = urls.map((url) => "/api/iptv-proxy?url=" + encodeURIComponent(url));
+    const urls: string[] = [];
+    for (const url of raw) {
+      if (!urls.includes(url)) urls.push(url);
+    }
 
-    return Array.from(new Set([...urls, ...withProxy]));
+    // Pour les playlists HLS, on essaie aussi via le proxy afin de contourner
+    // les serveurs qui bloquent le navigateur à cause du CORS.
+    for (const url of [...urls]) {
+      if (/\.m3u8(?:$|[?#])/i.test(url)) {
+        const p = proxied(url);
+        if (!urls.includes(p)) urls.push(p);
+      }
+    }
+
+    return urls;
   }, [selected, normalizedServer, credentials.username, credentials.password]);
 
   const activePlayerUrl = playerCandidates[playerIndex] || "";
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !activePlayerUrl) return;
+
+    let cancelled = false;
+    let cleanup: (() => void) | undefined;
+
+    async function start() {
+      setPlayerError("");
+      setPlayerStatus("Chargement du flux…");
+
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+
+      video.pause();
+      video.removeAttribute("src");
+      video.load();
+
+      const isHls = /\.m3u8(?:$|[?#])/i.test(activePlayerUrl);
+
+      try {
+        // Safari/iOS utilise son moteur HLS natif.
+        if (isHls && video.canPlayType("application/vnd.apple.mpegurl")) {
+          video.src = activePlayerUrl;
+          await video.play().catch(() => undefined);
+          if (!cancelled) setPlayerStatus("Lecture HLS native.");
+          return;
+        }
+
+        // Chrome/Firefox/Edge utilisent hls.js.
+        if (isHls) {
+          const mod = await import("hls.js");
+          const Hls = mod.default;
+
+          if (cancelled) return;
+
+          if (Hls.isSupported()) {
+            const hls = new Hls({
+              enableWorker: true,
+              lowLatencyMode: true,
+              backBufferLength: 30,
+            });
+
+            hlsRef.current = hls;
+
+            hls.on(Hls.Events.MEDIA_ATTACHED, () => {
+              hls.loadSource(activePlayerUrl);
+            });
+
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+              setPlayerStatus("Flux HLS chargé.");
+              video.play().catch(() => undefined);
+            });
+
+            hls.on(Hls.Events.ERROR, (_event, data) => {
+              if (!data.fatal) return;
+              hls.destroy();
+              hlsRef.current = null;
+              setPlayerStatus("Échec de cette source, essai de la suivante…");
+              setPlayerIndex((i) => i + 1);
+            });
+
+            hls.attachMedia(video);
+            cleanup = () => hls.destroy();
+            return;
+          }
+        }
+
+        // Dernier cas : lecture directe pour MP4/WebM ou tout format nativement supporté.
+        video.src = activePlayerUrl;
+        await video.play().catch(() => undefined);
+        if (!cancelled) setPlayerStatus("Lecture directe.");
+      } catch {
+        if (!cancelled) {
+          setPlayerStatus("Cette source ne répond pas, essai de la suivante…");
+          setPlayerIndex((i) => i + 1);
+        }
+      }
+    }
+
+    start();
+
+    return () => {
+      cancelled = true;
+      cleanup?.();
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+    };
+  }, [activePlayerUrl]);
+
+  useEffect(() => {
+    if (playerIndex >= playerCandidates.length && playerCandidates.length > 0) {
+      setPlayerError(
+        "Aucune version web-compatible de ce flux n'a pu être lue. La connexion Xtream fonctionne, mais ce serveur semble fournir cette chaîne dans un format ou avec des codecs non pris en charge par Safari."
+      );
+      setPlayerStatus("");
+    }
+  }, [playerIndex, playerCandidates.length]);
 
   async function connect() {
     setMessage("");
@@ -113,23 +232,14 @@ export default function IPTVPage() {
     setSelected(stream);
     setPlayerIndex(0);
     setPlayerError("");
+    setPlayerStatus("");
   }
 
   function tryNextSource() {
-    if (playerIndex + 1 < playerCandidates.length) {
-      setPlayerError("");
-      setPlayerIndex((i) => i + 1);
-      return;
-    }
-
-    setPlayerError(
-      "Aucune source fournie par ce serveur n'est lisible dans Safari. La connexion Xtream fonctionne, mais ce flux précis est indisponible ou utilise un format non compatible."
-    );
+    setPlayerIndex((i) => i + 1);
   }
 
-  const visible = streams.filter((s) =>
-    s.name?.toLowerCase().includes(search.toLowerCase())
-  );
+  const visible = streams.filter((s) => s.name?.toLowerCase().includes(search.toLowerCase()));
 
   return (
     <main className="dash" style={{ maxWidth: 1400, margin: "0 auto", padding: "28px 18px 90px" }}>
@@ -149,25 +259,10 @@ export default function IPTVPage() {
           <p className="muted">Utilise uniquement un abonnement ou un serveur auquel tu es autorisé à accéder.</p>
 
           <div style={{ display: "grid", gap: 14, marginTop: 24 }}>
-            <input
-              placeholder="https://mon-serveur.example:8080"
-              value={credentials.server}
-              onChange={(e) => setCredentials({ ...credentials, server: e.target.value })}
-            />
-            <input
-              placeholder="Nom d’utilisateur"
-              value={credentials.username}
-              onChange={(e) => setCredentials({ ...credentials, username: e.target.value })}
-            />
-            <input
-              type="password"
-              placeholder="Mot de passe"
-              value={credentials.password}
-              onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
-            />
-            <button onClick={connect} disabled={loading}>
-              {loading ? "Connexion…" : "🔌 Se connecter"}
-            </button>
+            <input placeholder="https://mon-serveur.example:8080" value={credentials.server} onChange={(e) => setCredentials({ ...credentials, server: e.target.value })} />
+            <input placeholder="Nom d’utilisateur" value={credentials.username} onChange={(e) => setCredentials({ ...credentials, username: e.target.value })} />
+            <input type="password" placeholder="Mot de passe" value={credentials.password} onChange={(e) => setCredentials({ ...credentials, password: e.target.value })} />
+            <button onClick={connect} disabled={loading}>{loading ? "Connexion…" : "🔌 Se connecter"}</button>
           </div>
 
           {message && <p className="notice" style={{ marginTop: 16 }}>{message}</p>}
@@ -181,52 +276,44 @@ export default function IPTVPage() {
                 <h1 style={{ margin: "6px 0" }}>📺 IPTV Player</h1>
               </div>
               <button onClick={() => {
-                setConnected(false);
-                setSelected(null);
-                setStreams([]);
-                setPlayerError("");
-                setPlayerIndex(0);
-              }}>
-                Déconnexion
-              </button>
+                if (hlsRef.current) hlsRef.current.destroy();
+                setConnected(false); setSelected(null); setStreams([]); setPlayerError(""); setPlayerIndex(0);
+              }}>Déconnexion</button>
             </div>
 
             {selected ? (
               <div style={{ marginTop: 18 }}>
                 <h2>{selected.name}</h2>
 
-                {activePlayerUrl ? (
+                {playerIndex < playerCandidates.length ? (
                   <video
                     key={activePlayerUrl}
                     ref={videoRef}
                     controls
-                    autoPlay
                     playsInline
                     preload="auto"
                     style={{ width: "100%", maxHeight: 650, background: "#000", borderRadius: 18 }}
-                    src={activePlayerUrl}
                     onCanPlay={() => setPlayerError("")}
+                    onPlaying={() => setPlayerStatus("▶️ Lecture en cours")}
                     onError={tryNextSource}
                   />
                 ) : (
-                  <div className="notice">⚠️ Aucune URL de lecture n'a pu être générée.</div>
+                  <div style={{ minHeight: 220, borderRadius: 18, background: "#000", display: "grid", placeItems: "center" }}>⚠️ Flux non lisible</div>
                 )}
 
-                {!playerError ? (
+                {playerStatus && <p className="muted" style={{ marginTop: 10 }}>{playerStatus}</p>}
+
+                {playerIndex < playerCandidates.length && (
                   <p className="muted" style={{ marginTop: 10 }}>
-                    Lecture directe privilégiée pour Safari/iPhone. En cas d'échec, le lecteur essaie automatiquement les autres formats et le proxy.
-                    {playerCandidates.length > 1 ? " Source " + (playerIndex + 1) + "/" + playerCandidates.length + "." : ""}
+                    Source {playerIndex + 1}/{playerCandidates.length} • Le lecteur utilise HLS natif sur iPhone et hls.js sur les autres navigateurs.
                   </p>
-                ) : (
+                )}
+
+                {playerError && (
                   <div className="notice" style={{ marginTop: 12 }}>
                     ⚠️ {playerError}
                     <div style={{ marginTop: 10 }}>
-                      <button onClick={() => {
-                        setPlayerIndex(0);
-                        setPlayerError("");
-                      }}>
-                        ↻ Recommencer les essais
-                      </button>
+                      <button onClick={() => { setPlayerIndex(0); setPlayerError(""); }}>↻ Recommencer les essais</button>
                     </div>
                   </div>
                 )}
@@ -241,29 +328,17 @@ export default function IPTVPage() {
           <section style={{ display: "grid", gridTemplateColumns: "260px 1fr", gap: 20, marginTop: 20 }}>
             <aside className="profileBox">
               <h2>Catégories</h2>
-              <button
-                onClick={async () => {
-                  setSelectedCategory("");
-                  setLoading(true);
-                  try {
-                    const d = await api({ ...credentials, server: normalizedServer }, "get_live_streams");
-                    setStreams(Array.isArray(d) ? d : []);
-                  } finally {
-                    setLoading(false);
-                  }
-                }}
-                style={{ width: "100%", marginBottom: 8 }}
-              >
-                Toutes les chaînes
-              </button>
+              <button onClick={async () => {
+                setSelectedCategory(""); setLoading(true);
+                try {
+                  const d = await api({ ...credentials, server: normalizedServer }, "get_live_streams");
+                  setStreams(Array.isArray(d) ? d : []);
+                } finally { setLoading(false); }
+              }} style={{ width: "100%", marginBottom: 8 }}>Toutes les chaînes</button>
 
               <div style={{ display: "grid", gap: 8 }}>
                 {categories.map((c) => (
-                  <button
-                    key={c.category_id}
-                    onClick={() => chooseCategory(c.category_id)}
-                    style={{ textAlign: "left", opacity: selectedCategory === c.category_id ? 1 : 0.75 }}
-                  >
+                  <button key={c.category_id} onClick={() => chooseCategory(c.category_id)} style={{ textAlign: "left", opacity: selectedCategory === c.category_id ? 1 : 0.75 }}>
                     {c.category_name}
                   </button>
                 ))}
@@ -273,25 +348,14 @@ export default function IPTVPage() {
             <section className="profileBox">
               <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
                 <h2>Chaînes {loading ? "⏳" : ""}</h2>
-                <input
-                  placeholder="🔎 Rechercher…"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  style={{ maxWidth: 300 }}
-                />
+                <input placeholder="🔎 Rechercher…" value={search} onChange={(e) => setSearch(e.target.value)} style={{ maxWidth: 300 }} />
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: 14, marginTop: 18 }}>
                 {visible.slice(0, 500).map((stream) => (
-                  <button
-                    key={stream.stream_id}
-                    onClick={() => openStream(stream)}
-                    style={{ padding: 0, overflow: "hidden", textAlign: "left" }}
-                  >
+                  <button key={stream.stream_id} onClick={() => openStream(stream)} style={{ padding: 0, overflow: "hidden", textAlign: "left" }}>
                     <div style={{ height: 110, background: "#111", display: "grid", placeItems: "center" }}>
-                      {stream.stream_icon ? (
-                        <img src={stream.stream_icon} alt="" style={{ maxWidth: "70%", maxHeight: 80, objectFit: "contain" }} />
-                      ) : "📺"}
+                      {stream.stream_icon ? <img src={stream.stream_icon} alt="" style={{ maxWidth: "70%", maxHeight: 80, objectFit: "contain" }} /> : "📺"}
                     </div>
                     <div style={{ padding: 12, fontWeight: 700 }}>{stream.name}</div>
                   </button>
