@@ -12,16 +12,33 @@ function toProxy(target: string, base: string) {
 }
 
 function rewritePlaylist(text: string, sourceUrl: string) {
-  return text.split(/\r?\n/).map((line) => {
-    const trimmed = line.trim();
-    if (!trimmed) return line;
+  return text
+    .split(/\r?\n/)
+    .map((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) return line;
 
-    if (trimmed.startsWith("#")) {
-      return line.replace(/URI="([^"]+)"/g, (_m, uri) => 'URI="' + toProxy(uri, sourceUrl) + '"');
-    }
+      // Réécrit les URI des tags HLS (#EXT-X-KEY, #EXT-X-MAP, etc.).
+      if (trimmed.startsWith("#")) {
+        return line.replace(/URI=(?:"([^"]+)"|'([^']+)'|([^,\s]+))/g, (_m, a, b, c) => {
+          const uri = a || b || c;
+          return 'URI="' + toProxy(uri, sourceUrl) + '"';
+        });
+      }
 
-    return toProxy(trimmed, sourceUrl);
-  }).join("\n");
+      // Réécrit segments, playlists secondaires et chemins relatifs.
+      return toProxy(trimmed, sourceUrl);
+    })
+    .join("\n");
+}
+
+function isPlaylist(type: string, url: URL, bodyStart?: string) {
+  return (
+    type.includes("mpegurl") ||
+    type.includes("vnd.apple.mpegurl") ||
+    /\.m3u8(?:$|[?#])/i.test(url.pathname) ||
+    !!bodyStart?.trimStart().startsWith("#EXTM3U")
+  );
 }
 
 export async function GET(request: NextRequest) {
@@ -31,36 +48,52 @@ export async function GET(request: NextRequest) {
   let target: URL;
   try {
     target = new URL(raw);
-    if (target.protocol !== "http:" && target.protocol !== "https:") throw new Error();
+    if (!["http:", "https:"].includes(target.protocol)) throw new Error();
   } catch {
     return NextResponse.json({ error: "URL invalide." }, { status: 400 });
   }
 
   try {
+    const upstreamHeaders = new Headers();
+    upstreamHeaders.set("User-Agent", request.headers.get("user-agent") || "Mozilla/5.0");
+    upstreamHeaders.set("Accept", request.headers.get("accept") || "*/*");
+
+    // Certains flux HLS/fMP4 utilisent des requêtes partielles.
+    const range = request.headers.get("range");
+    if (range) upstreamHeaders.set("Range", range);
+
     const upstream = await fetch(target, {
       cache: "no-store",
       redirect: "follow",
-      headers: {
-        "User-Agent": request.headers.get("user-agent") || "Mozilla/5.0",
-        "Accept": request.headers.get("accept") || "*/*",
-      },
+      headers: upstreamHeaders,
     });
 
-    if (!upstream.ok || !upstream.body) {
-      return NextResponse.json({ error: "Le serveur IPTV a répondu avec " + upstream.status + "." }, { status: upstream.status || 502 });
+    if (!upstream.ok && upstream.status !== 206) {
+      return NextResponse.json(
+        { error: "Le serveur IPTV a répondu avec " + upstream.status + "." },
+        { status: upstream.status || 502 }
+      );
+    }
+
+    if (!upstream.body) {
+      return NextResponse.json({ error: "Réponse IPTV vide." }, { status: 502 });
     }
 
     const type = upstream.headers.get("content-type") || "";
-    const looksLikePlaylist = type.includes("mpegurl") || target.pathname.toLowerCase().includes(".m3u8");
 
-    if (looksLikePlaylist) {
+    // Une playlist est petite : on la lit et on réécrit toutes ses ressources
+    // afin que Safari charge aussi segments, clés et sous-playlists via le proxy.
+    if (isPlaylist(type, target)) {
       const playlist = await upstream.text();
       const rewritten = rewritePlaylist(playlist, upstream.url || target.toString());
+
       return new NextResponse(rewritten, {
         status: 200,
         headers: {
           "Content-Type": "application/vnd.apple.mpegurl; charset=utf-8",
-          "Cache-Control": "no-store",
+          "Cache-Control": "no-store, no-cache",
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Headers": "Range, Content-Type",
         },
       });
     }
@@ -68,10 +101,18 @@ export async function GET(request: NextRequest) {
     const headers = new Headers();
     headers.set("Content-Type", type || "application/octet-stream");
     headers.set("Cache-Control", "no-store");
-    const length = upstream.headers.get("content-length");
-    if (length) headers.set("Content-Length", length);
+    headers.set("Access-Control-Allow-Origin", "*");
+    headers.set("Accept-Ranges", upstream.headers.get("accept-ranges") || "bytes");
 
-    return new NextResponse(upstream.body, { status: upstream.status, headers });
+    for (const name of ["content-length", "content-range", "content-encoding"]) {
+      const value = upstream.headers.get(name);
+      if (value) headers.set(name, value);
+    }
+
+    return new NextResponse(upstream.body, {
+      status: upstream.status,
+      headers,
+    });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Impossible de joindre le flux IPTV." },
