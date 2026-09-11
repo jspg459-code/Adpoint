@@ -63,7 +63,6 @@ export default function Dashboard(){
    <nav className="cleanTextNav">
     <Link href="/dashboard" className="active">Tableau de bord</Link>
     <Link href="/ranking">Classement</Link>
-    <Link href="/iptv">📺 IPTV</Link>
     <Link href="/profile">Mon profil</Link>
     {isAdmin&&<Link href="/admin">Administration</Link>}
     <button onClick={logout}>Déconnexion</button>
@@ -80,11 +79,6 @@ export default function Dashboard(){
      <h3>🎬 Regarder une publicité</h3>
      <p>Regarde une publicité vidéo et découvre notre système de récompense.</p>
      <Link href="/watch-ad" className="shopBrowseButton">Regarder une pub →</Link>
-    </article>
-    <article className="activity">
-     <h3>📺 Lecteur IPTV</h3>
-     <p>Connecte ton service Xtream autorisé et accède à tes chaînes depuis le lecteur.</p>
-     <Link href="/iptv" className="shopBrowseButton">Ouvrir le lecteur IPTV →</Link>
     </article>
     <article className="activity">
      <h3>✨ Ton solde</h3>
