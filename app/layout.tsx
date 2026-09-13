@@ -16,15 +16,14 @@ export const metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fr">
-      <head>
+      <body>
         <Script
+          id="adsense-script"
           async
-          strategy="afterInteractive"
+          strategy="beforeInteractive"
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8585188868825763"
           crossOrigin="anonymous"
         />
-      </head>
-      <body>
         <PointsProvider>
           {children}
           <PresenceTracker />
