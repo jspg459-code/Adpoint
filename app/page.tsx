@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect } from "react";
+import Script from "next/script";
 
 const sectionStyle: React.CSSProperties = {
   maxWidth: 1080,
@@ -32,6 +33,14 @@ export default function Home() {
 
   return (
     <main className="homeModern">
+      <Script
+        id="adsense-script-home"
+        async
+        strategy="afterInteractive"
+        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8585188868825763"
+        crossOrigin="anonymous"
+      />
+
       <header className="modernHeader">
         <Link href="/" className="modernBrand" aria-label="AdPoints">
           <span className="modernCoin"><i /></span>
@@ -70,26 +79,10 @@ export default function Home() {
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 18 }}>
-          <article style={cardStyle}>
-            <div style={{ fontSize: 30 }}>①</div>
-            <h3>Créer un compte</h3>
-            <p className="muted">Inscris-toi gratuitement et retrouve ton espace personnel.</p>
-          </article>
-          <article style={cardStyle}>
-            <div style={{ fontSize: 30 }}>②</div>
-            <h3>Participer</h3>
-            <p className="muted">Consulte les activités réellement disponibles sur AdPoints.</p>
-          </article>
-          <article style={cardStyle}>
-            <div style={{ fontSize: 30 }}>③</div>
-            <h3>Accumuler</h3>
-            <p className="muted">Les points obtenus sont visibles dans ton tableau de bord.</p>
-          </article>
-          <article style={cardStyle}>
-            <div style={{ fontSize: 30 }}>④</div>
-            <h3>Utiliser</h3>
-            <p className="muted">Lorsque la boutique est ouverte, échange tes points contre les récompenses proposées.</p>
-          </article>
+          <article style={cardStyle}><div style={{ fontSize: 30 }}>①</div><h3>Créer un compte</h3><p className="muted">Inscris-toi gratuitement et retrouve ton espace personnel.</p></article>
+          <article style={cardStyle}><div style={{ fontSize: 30 }}>②</div><h3>Participer</h3><p className="muted">Consulte les activités réellement disponibles sur AdPoints.</p></article>
+          <article style={cardStyle}><div style={{ fontSize: 30 }}>③</div><h3>Accumuler</h3><p className="muted">Les points obtenus sont visibles dans ton tableau de bord.</p></article>
+          <article style={cardStyle}><div style={{ fontSize: 30 }}>④</div><h3>Utiliser</h3><p className="muted">Lorsque la boutique est ouverte, échange tes points contre les récompenses proposées.</p></article>
         </div>
       </section>
 
@@ -97,68 +90,29 @@ export default function Home() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 18 }}>
           <article style={cardStyle}>
             <h2>Ton espace personnel</h2>
-            <p className="muted" style={{ lineHeight: 1.7 }}>
-              Suis ton solde, ton classement et les fonctionnalités disponibles depuis
-              ton tableau de bord. Les informations liées à ton compte restent accessibles
-              après connexion.
-            </p>
-            <Link href="/signup" className="homePrimary" style={{ display: "inline-block", marginTop: 10 }}>
-              Créer mon compte
-            </Link>
+            <p className="muted" style={{ lineHeight: 1.7 }}>Suis ton solde, ton classement et les fonctionnalités disponibles depuis ton tableau de bord. Les informations liées à ton compte restent accessibles après connexion.</p>
+            <Link href="/signup" className="homePrimary" style={{ display: "inline-block", marginTop: 10 }}>Créer mon compte</Link>
           </article>
           <article style={cardStyle}>
             <h2>Une plateforme en évolution</h2>
-            <p className="muted" style={{ lineHeight: 1.7 }}>
-              AdPoints est actuellement en phase de développement. Certaines activités
-              et certaines récompenses peuvent donc être temporairement indisponibles.
-            </p>
+            <p className="muted" style={{ lineHeight: 1.7 }}>AdPoints est actuellement en phase de développement. Certaines activités et certaines récompenses peuvent donc être temporairement indisponibles.</p>
           </article>
         </div>
       </section>
 
       <section id="faq" style={{ ...sectionStyle, paddingTop: 45 }}>
-        <div style={{ textAlign: "center", marginBottom: 30 }}>
-          <div className="badge">FAQ</div>
-          <h2 style={{ fontSize: "clamp(30px, 5vw, 46px)", margin: "14px 0 10px" }}>
-            Questions fréquentes
-          </h2>
-        </div>
+        <div style={{ textAlign: "center", marginBottom: 30 }}><div className="badge">FAQ</div><h2 style={{ fontSize: "clamp(30px, 5vw, 46px)", margin: "14px 0 10px" }}>Questions fréquentes</h2></div>
         <div style={{ display: "grid", gap: 14 }}>
-          <details style={cardStyle}>
-            <summary style={{ cursor: "pointer", fontWeight: 700 }}>Qu'est-ce qu'un AdPoint ?</summary>
-            <p className="muted" style={{ lineHeight: 1.7 }}>
-              Un AdPoint est une unité de récompense utilisée dans ton compte AdPoints.
-              Les modalités d'obtention et d'utilisation sont précisées pour chaque fonctionnalité.
-            </p>
-          </details>
-          <details style={cardStyle}>
-            <summary style={{ cursor: "pointer", fontWeight: 700 }}>Les publicités sont-elles toujours disponibles ?</summary>
-            <p className="muted" style={{ lineHeight: 1.7 }}>
-              Non. La disponibilité dépend des campagnes et des fonctionnalités activées sur la plateforme.
-              Une activité peut être temporairement indisponible.
-            </p>
-          </details>
-          <details style={cardStyle}>
-            <summary style={{ cursor: "pointer", fontWeight: 700 }}>Où puis-je suivre mes points ?</summary>
-            <p className="muted" style={{ lineHeight: 1.7 }}>
-              Après connexion, ton solde et les principales fonctionnalités sont accessibles depuis ton tableau de bord.
-            </p>
-          </details>
-          <details style={cardStyle}>
-            <summary style={{ cursor: "pointer", fontWeight: 700 }}>Pourquoi certaines fonctionnalités peuvent-elles être indisponibles ?</summary>
-            <p className="muted" style={{ lineHeight: 1.7 }}>
-              AdPoints est encore en évolution. Nous préférons afficher clairement une fonctionnalité indisponible
-              plutôt que de présenter un service qui ne fonctionne pas encore.
-            </p>
-          </details>
+          <details style={cardStyle}><summary style={{ cursor: "pointer", fontWeight: 700 }}>Qu'est-ce qu'un AdPoint ?</summary><p className="muted" style={{ lineHeight: 1.7 }}>Un AdPoint est une unité de récompense utilisée dans ton compte AdPoints. Les modalités d'obtention et d'utilisation sont précisées pour chaque fonctionnalité.</p></details>
+          <details style={cardStyle}><summary style={{ cursor: "pointer", fontWeight: 700 }}>Les publicités sont-elles toujours disponibles ?</summary><p className="muted" style={{ lineHeight: 1.7 }}>Non. La disponibilité dépend des campagnes et des fonctionnalités activées sur la plateforme. Une activité peut être temporairement indisponible.</p></details>
+          <details style={cardStyle}><summary style={{ cursor: "pointer", fontWeight: 700 }}>Où puis-je suivre mes points ?</summary><p className="muted" style={{ lineHeight: 1.7 }}>Après connexion, ton solde et les principales fonctionnalités sont accessibles depuis ton tableau de bord.</p></details>
+          <details style={cardStyle}><summary style={{ cursor: "pointer", fontWeight: 700 }}>Pourquoi certaines fonctionnalités peuvent-elles être indisponibles ?</summary><p className="muted" style={{ lineHeight: 1.7 }}>AdPoints est encore en évolution. Nous préférons afficher clairement une fonctionnalité indisponible plutôt que de présenter un service qui ne fonctionne pas encore.</p></details>
         </div>
       </section>
 
       <footer style={{ maxWidth: 1080, margin: "0 auto", padding: "20px 22px 70px", textAlign: "center" }}>
         <p className="muted">AdPoints · Regarde. Gagne. Profite.</p>
-        <p className="muted" style={{ fontSize: 13 }}>
-          Les récompenses et fonctionnalités disponibles peuvent évoluer pendant la phase bêta.
-        </p>
+        <p className="muted" style={{ fontSize: 13 }}>Les récompenses et fonctionnalités disponibles peuvent évoluer pendant la phase bêta.</p>
       </footer>
     </main>
   );
