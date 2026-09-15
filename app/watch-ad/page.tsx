@@ -1,6 +1,12 @@
-"use client";
-
 import Link from "next/link";
+
+export const metadata = {
+  title: "Publicités indisponibles | AdPoints",
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 export default function WatchAdPage() {
   return (
@@ -17,10 +23,15 @@ export default function WatchAdPage() {
       </header>
 
       <section className="profileBox" style={{ marginTop: 28, textAlign: "center" }}>
-        <h1>Publicités bientôt disponibles</h1>
-        <p className="muted">
-          Cette fonctionnalité est actuellement indisponible.
+        <h1>Publicités actuellement indisponibles</h1>
+        <p className="muted" style={{ lineHeight: 1.7 }}>
+          Cette activité n'est pas encore disponible sur AdPoints. Elle sera réactivée
+          uniquement lorsqu'une solution publicitaire compatible avec le fonctionnement
+          de la plateforme sera configurée.
         </p>
+        <Link href="/dashboard" className="homePrimary" style={{ display: "inline-block", marginTop: 14 }}>
+          Retour au tableau de bord
+        </Link>
       </section>
     </main>
   );
