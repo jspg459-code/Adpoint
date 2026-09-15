@@ -1,5 +1,4 @@
 import "./globals.css";
-import Script from "next/script";
 import LanguageSelector from "./components/LanguageSelector";
 import BetaBadge from "./components/BetaBadge";
 import ActivityLogger from "./components/ActivityLogger";
@@ -10,20 +9,13 @@ import GlobalMessagesButton from "./components/GlobalMessagesButton";
 
 export const metadata = {
   title: "AdPoints",
-  description: "Regarde. Gagne. Profite."
+  description: "AdPoints — une plateforme de récompenses basée sur les activités des membres."
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fr">
       <body>
-        <Script
-          id="adsense-script"
-          async
-          strategy="beforeInteractive"
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8585188868825763"
-          crossOrigin="anonymous"
-        />
         <PointsProvider>
           {children}
           <PresenceTracker />
